@@ -1,10 +1,10 @@
-# Contributing to ReloLedger
+# Contributing to AbroadCost
 
-Thank you for helping improve ReloLedger. This project is maintained by **Arnova Group**.
+Thank you for helping improve AbroadCost. This project is maintained by **Arnova Group**.
 
 ## How to contribute
 
-1. Fork https://github.com/Arnold-RG/ReloLedger
+1. Fork https://github.com/Arnold-RG/AbroadCost
 2. Create a focused branch (`fix/living-rate-label`, `docs/methodology`, …)
 3. Make changes with clear commits
 4. Open a pull request describing **why** the change matters

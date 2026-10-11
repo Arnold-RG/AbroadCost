@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 JS = ROOT / "world_data.js"
 
-# UN M49 / standard continental assignment used for ReloLedger filters.
+# UN M49 / standard continental assignment used for AbroadCost filters.
 # Western Asia stays Asia; Russia = Europe; Cyprus = Asia; Egypt = Africa; Turkey = Asia.
 REGION_BY_ISO2 = {
     # Africa

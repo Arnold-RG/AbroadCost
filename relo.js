@@ -740,7 +740,7 @@ function setTab(name) {
 function applyTheme(theme) {
   const mode = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", mode);
-  localStorage.setItem("relo-theme", mode);
+  localStorage.setItem("abroadcost-theme", mode);
   document.querySelectorAll("[data-theme-set]").forEach((btn) => {
     const on = btn.dataset.themeSet === mode;
     btn.classList.toggle("on", on);
@@ -760,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (err) err.hidden = true;
 
-  const saved = localStorage.getItem("relo-theme");
+  const saved = localStorage.getItem("abroadcost-theme");
   applyTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
   document.querySelectorAll("[data-theme-set]").forEach((btn) => {
     btn.addEventListener("click", () => {

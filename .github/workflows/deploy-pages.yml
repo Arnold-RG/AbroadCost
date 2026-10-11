@@ -1,4 +1,4 @@
-# Deploy ReloLedger static site to GitHub Pages
+# Deploy AbroadCost static site to GitHub Pages
 name: Deploy GitHub Pages
 
 on:

@@ -1,4 +1,4 @@
-# ReloLedger — data & methodology
+# AbroadCost — data & methodology
 
 **Maintainer:** Arnova Group  
 **Coverage:** 195 countries  
@@ -8,7 +8,7 @@
 
 ## 1. Country universe & regions
 
-Countries follow a practical ISO-style 195-country set used by ReloLedger.
+Countries follow a practical ISO-style 195-country set used by AbroadCost.
 
 **Regions** use UN M49 geographic continents (not World Bank lending regions):
 
@@ -56,7 +56,7 @@ Values are clipped to a planning band (about `0.14`–`1.85`).
 
 ### Outlier handling
 
-Official FX can diverge from street/parallel rates (hyperinflation, dual currency). ReloLedger clamps or overrides distorted cases (examples historically include Iran, Sudan, Zimbabwe) so travel and living budgets stay usable for planners.
+Official FX can diverge from street/parallel rates (hyperinflation, dual currency). AbroadCost clamps or overrides distorted cases (examples historically include Iran, Sudan, Zimbabwe) so travel and living budgets stay usable for planners.
 
 Sparse / missing PPP-FX hits may use peer-informed overrides (e.g. selected East Africa or Pacific island cases).
 
@@ -132,4 +132,4 @@ Known intentional gaps: a few territories without World Bank GDP/wage series (e.
 
 ## 9. Disclaimer
 
-ReloLedger is a **planning and education tool**. Macro series, wages, and COL indices change; local prices, taxes, and hiring conditions vary by city and sector. Always verify critical decisions with official statistics and professional advice.
+AbroadCost is a **planning and education tool**. Macro series, wages, and COL indices change; local prices, taxes, and hiring conditions vary by city and sector. Always verify critical decisions with official statistics and professional advice.

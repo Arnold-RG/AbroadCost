@@ -4,7 +4,7 @@
 
 ## Supported surface
 
-ReloLedger is a public static website. There is no authenticated API in this repository.
+AbroadCost is a public static website. There is no authenticated API in this repository.
 
 ## Reporting a vulnerability
 

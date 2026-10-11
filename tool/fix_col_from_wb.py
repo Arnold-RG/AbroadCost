@@ -20,7 +20,7 @@ def fetch_wb(indicator: str, codes: list[str]) -> dict:
             f"https://api.worldbank.org/v2/country/{joined}/indicator/{indicator}"
             f"?format=json&date=2015:2025&per_page=2000"
         )
-        req = urllib.request.Request(url, headers={"User-Agent": "ReloLedger-COL/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "AbroadCost-COL/1.0"})
         try:
             with urllib.request.urlopen(req, timeout=90) as resp:
                 payload = json.load(resp)

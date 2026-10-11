@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ReloLedger — living budgets, salaries, travel costs, and economy data for 195 countries.">
-  <title>ReloLedger — Country budget planner</title>
+  <meta name="description" content="AbroadCost — living budgets, salaries, travel costs, and economy data for 195 countries.">
+  <title>AbroadCost — Country budget planner</title>
   <link rel="stylesheet" href="relo.css">
   <script>
     (function () {
-      var saved = localStorage.getItem("relo-theme");
+      var saved = localStorage.getItem("abroadcost-theme");
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
     })();
@@ -24,7 +24,7 @@
     </div>
 
     <header class="hero">
-      <p class="brand">ReloLedger</p>
+      <p class="brand">AbroadCost</p>
       <h1>Country budget planner</h1>
       <p class="intro">
         Monthly living costs, gross &amp; net salaries, traveling budgets,

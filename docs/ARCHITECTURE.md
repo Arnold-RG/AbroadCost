@@ -1,10 +1,10 @@
-# ReloLedger — architecture
+# AbroadCost — architecture
 
 **Maintainer:** Arnova Group
 
 ## Overview
 
-ReloLedger is a **static single-page application**. There is no required backend for end users. Country data ships as `world_data.js`; all calculators and charts run in the browser.
+AbroadCost is a **static single-page application**. There is no required backend for end users. Country data ships as `world_data.js`; all calculators and charts run in the browser.
 
 ```text
 Browser
@@ -23,7 +23,7 @@ Browser
 | Travel stay | Duration, purpose, visa, papers, flights |
 | Economy rates | `jobRates()` → living rate + general job |
 | Charts | Canvas bar / donut / grouped salary |
-| Theme | `localStorage` key `relo-theme` |
+| Theme | `localStorage` key `abroadcost-theme` |
 
 ## Deployment
 
@@ -34,7 +34,7 @@ GitHub Actions workflow `.github/workflows/deploy-pages.yml`:
 3. Upload Pages artifact
 4. Deploy to GitHub Pages environment
 
-Public URL pattern: `https://arnold-rg.github.io/ReloLedger/`
+Public URL pattern: `https://arnold-rg.github.io/AbroadCost/`
 
 ## Security posture
 

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/ReloLedger-Country%20budget%20planner-0B3D2E?style=for-the-badge" alt="ReloLedger"/>
+  <img src="https://img.shields.io/badge/AbroadCost-Country%20budget%20planner-0B3D2E?style=for-the-badge" alt="AbroadCost"/>
 </p>
 
-<h1 align="center">ReloLedger</h1>
+<h1 align="center">AbroadCost</h1>
 
 <p align="center">
   <strong>Country budget planner for 195 countries.</strong><br/>
@@ -10,13 +10,13 @@
 </p>
 
 <p align="center">
-  <a href="https://arnold-rg.github.io/ReloLedger/"><img src="https://img.shields.io/badge/Live_site-Open_now-C9A27A?style=for-the-badge&logo=github" alt="Live site"/></a>
-  <a href="https://github.com/Arnold-RG/ReloLedger"><img src="https://img.shields.io/badge/Repo-Public-0A0908?style=for-the-badge&logo=github" alt="Public repo"/></a>
-  <a href="https://github.com/Arnold-RG/ReloLedger/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Source--available-444?style=for-the-badge" alt="License"/></a>
+  <a href="https://arnold-rg.github.io/AbroadCost/"><img src="https://img.shields.io/badge/Live_site-Open_now-C9A27A?style=for-the-badge&logo=github" alt="Live site"/></a>
+  <a href="https://github.com/Arnold-RG/AbroadCost"><img src="https://img.shields.io/badge/Repo-Public-0A0908?style=for-the-badge&logo=github" alt="Public repo"/></a>
+  <a href="https://github.com/Arnold-RG/AbroadCost/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Source--available-444?style=for-the-badge" alt="License"/></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/actions/workflow/status/Arnold-RG/ReloLedger/deploy-pages.yml?label=Pages%20deploy&style=flat-square" alt="CI"/>
+  <img src="https://img.shields.io/github/actions/workflow/status/Arnold-RG/AbroadCost/deploy-pages.yml?label=Pages%20deploy&style=flat-square" alt="CI"/>
   <img src="https://img.shields.io/badge/Coverage-195%20countries-0B3D2E?style=flat-square" alt="Countries"/>
   <img src="https://img.shields.io/badge/Maintainer-Arnova%20Group-1F6F4A?style=flat-square" alt="Arnova Group"/>
 </p>
@@ -27,15 +27,15 @@
 
 | | |
 |---|---|
-| **Public website** | https://arnold-rg.github.io/ReloLedger/ |
-| **Source code** | https://github.com/Arnold-RG/ReloLedger |
+| **Public website** | https://arnold-rg.github.io/AbroadCost/ |
+| **Source code** | https://github.com/Arnold-RG/AbroadCost |
 | **Audience** | Anyone with a browser — no login, no install |
 
 Open the live link in Chrome, Edge, Firefox, Safari, or any modern mobile browser. The site is static, public, and fully usable without an account.
 
 ---
 
-## What ReloLedger does
+## What AbroadCost does
 
 | Mode | Purpose |
 |------|---------|
@@ -114,7 +114,7 @@ Then open http://localhost:5500 in your system browser.
 
 ## Maintainer
 
-**Arnova Group** — public contributor and copyright holder for ReloLedger.
+**Arnova Group** — public contributor and copyright holder for AbroadCost.
 
 - GitHub organization / account: [Arnold-RG](https://github.com/Arnold-RG)
 - Company: Arnova Group
