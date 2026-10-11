@@ -133,3 +133,12 @@ Known intentional gaps: a few territories without World Bank GDP/wage series (e.
 ## 9. Disclaimer
 
 AbroadCost is a **planning and education tool**. Macro series, wages, and COL indices change; local prices, taxes, and hiring conditions vary by city and sector. Always verify critical decisions with official statistics and professional advice.
+
+---
+
+## 10. Monthly living & travel budgets (AbroadCost v2)
+
+- **Monthly living**: mid-tier USA basket (housing, food, transport, utilities, healthcare, other) scaled by destination COL (WB PPP/FX price level).
+- **Travel stay**: mid-range hotel / meal / local daily USD rates scaled by destination COL and party size.
+- **Flights**: great-circle distance between capital coordinates, with regional fallbacks; premium and round-trip multipliers applied.
+- **Visas**: published fee ballparks for major destinations; regional defaults otherwise.

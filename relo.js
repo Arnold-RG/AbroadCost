@@ -5,41 +5,92 @@ const FX_SOURCE = window.RELO_FX_SOURCE || {};
 const SALARY_SOURCE = window.RELO_SALARY_SOURCE || {};
 const FX = Object.fromEntries(CURRENCIES.map((c) => [c.code, Number(c.usd) || 1]));
 
+/**
+ * Mid-tier USA monthly basket for one adult (comfortable, not luxury).
+ * Anchored to Numbeo / BLS-style mid-city US costs (outside top global cores).
+ * Other countries = basket × destination COL (WB price level vs USA).
+ */
 const MONTHLY_USD = {
-  housing: 1400,
-  food: 520,
-  transport: 280,
-  utilities: 220,
-  healthcare: 180,
-  other: 200
+  housing: 1350,
+  food: 500,
+  transport: 200,
+  utilities: 210,
+  healthcare: 200,
+  other: 250
 };
 
+/** Mid-range traveler daily costs in USA dollars (hotel + meals + local + misc). */
+const TRAVEL_DAILY_USD = {
+  lodging: 110,
+  food: 48,
+  transport: 22,
+  local: 28
+};
+
+/**
+ * Published / commonly charged visa fee ballparks (USD) by destination.
+ * Defaults apply when a destination is not listed.
+ */
 const VISA_BY_DEST = {
   US: { tourist: 185, business: 185, student: 185, work: 205, transit: 185, dependent: 185, residence: 325 },
   GB: { tourist: 148, business: 148, student: 630, work: 827, transit: 82, dependent: 148, residence: 1910 },
-  CA: { tourist: 74, business: 74, student: 110, work: 155, transit: 74, dependent: 74, residence: 850 },
+  CA: { tourist: 100, business: 100, student: 150, work: 155, transit: 100, dependent: 100, residence: 850 },
   AU: { tourist: 20, business: 145, student: 710, work: 465, transit: 20, dependent: 145, residence: 3220 },
-  DE: { tourist: 98, business: 98, student: 82, work: 120, transit: 98, dependent: 98, residence: 130 },
-  FR: { tourist: 98, business: 98, student: 82, work: 120, transit: 98, dependent: 98, residence: 130 },
-  IT: { tourist: 98, business: 98, student: 82, work: 120, transit: 98, dependent: 98, residence: 130 },
-  ES: { tourist: 98, business: 98, student: 82, work: 120, transit: 98, dependent: 98, residence: 130 },
-  NL: { tourist: 98, business: 98, student: 82, work: 120, transit: 98, dependent: 98, residence: 130 },
+  NZ: { tourist: 35, business: 35, student: 330, work: 495, transit: 35, dependent: 35, residence: 2710 },
+  DE: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  FR: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  IT: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  ES: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  NL: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  BE: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  PT: { tourist: 90, business: 90, student: 75, work: 100, transit: 90, dependent: 90, residence: 120 },
+  IE: { tourist: 60, business: 60, student: 60, work: 1000, transit: 25, dependent: 60, residence: 1000 },
+  CH: { tourist: 90, business: 90, student: 90, work: 120, transit: 90, dependent: 90, residence: 150 },
+  SE: { tourist: 90, business: 90, student: 90, work: 150, transit: 90, dependent: 90, residence: 150 },
+  NO: { tourist: 90, business: 90, student: 90, work: 150, transit: 90, dependent: 90, residence: 150 },
+  DK: { tourist: 90, business: 90, student: 90, work: 150, transit: 90, dependent: 90, residence: 150 },
+  PL: { tourist: 90, business: 90, student: 90, work: 120, transit: 90, dependent: 90, residence: 150 },
   RW: { tourist: 50, business: 50, student: 50, work: 100, transit: 30, dependent: 50, residence: 100 },
   KE: { tourist: 34, business: 34, student: 50, work: 150, transit: 20, dependent: 50, residence: 150 },
+  UG: { tourist: 50, business: 100, student: 100, work: 250, transit: 50, dependent: 50, residence: 250 },
+  TZ: { tourist: 50, business: 250, student: 250, work: 500, transit: 30, dependent: 50, residence: 500 },
+  ZA: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  NG: { tourist: 60, business: 100, student: 100, work: 200, transit: 40, dependent: 60, residence: 200 },
+  GH: { tourist: 60, business: 100, student: 100, work: 200, transit: 40, dependent: 60, residence: 200 },
+  EG: { tourist: 25, business: 25, student: 25, work: 25, transit: 25, dependent: 25, residence: 25 },
+  MA: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
   IN: { tourist: 25, business: 80, student: 80, work: 100, transit: 20, dependent: 80, residence: 100 },
   CN: { tourist: 140, business: 140, student: 140, work: 140, transit: 140, dependent: 140, residence: 140 },
   JP: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
-  AE: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 }
+  KR: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  SG: { tourist: 0, business: 0, student: 30, work: 105, transit: 0, dependent: 30, residence: 105 },
+  TH: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  VN: { tourist: 25, business: 25, student: 25, work: 25, transit: 25, dependent: 25, residence: 25 },
+  ID: { tourist: 35, business: 50, student: 50, work: 100, transit: 25, dependent: 35, residence: 100 },
+  MY: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  PH: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  AE: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  SA: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  QA: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  TR: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  BR: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  MX: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  AR: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  CL: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  CO: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  RU: { tourist: 80, business: 80, student: 80, work: 80, transit: 80, dependent: 80, residence: 80 },
+  UA: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 },
+  IL: { tourist: 0, business: 0, student: 0, work: 0, transit: 0, dependent: 0, residence: 0 }
 };
 
 const VISA_FEE_USD = {
-  none: 0, tourist: 70, business: 110, student: 150, work: 220,
-  transit: 40, dependent: 110, residence: 350
+  none: 0, tourist: 65, business: 95, student: 140, work: 200,
+  transit: 40, dependent: 95, residence: 320
 };
-const PAPERS_USD = { none: 0, basic: 45, standard: 180, full: 520 };
+const PAPERS_USD = { none: 0, basic: 40, standard: 160, full: 480 };
 const PURPOSE_EXTRA_USD = {
-  visit: 0, work: 150, study: 200, business: 75, family: 100,
-  medical: 160, nomad: 80, permanent: 320
+  visit: 0, work: 140, study: 180, business: 70, family: 90,
+  medical: 150, nomad: 75, permanent: 300
 };
 const PURPOSE_LABEL = {
   visit: "Visiting / tourism", work: "Work / employment", study: "Studying",
@@ -102,12 +153,58 @@ function visaFeeUsd(destCode, visa) {
   return VISA_FEE_USD[visa] || 0;
 }
 
+function haversineKm(from, to) {
+  const lat1 = Number(from?.lat);
+  const lon1 = Number(from?.lon);
+  const lat2 = Number(to?.lat);
+  const lon2 = Number(to?.lon);
+  if (![lat1, lon1, lat2, lon2].every((v) => Number.isFinite(v))) return null;
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/** Region pair fallback when capitals are missing (approx one-way economy USD). */
+const REGION_FLIGHT_USD = {
+  Africa: { Africa: 280, Americas: 950, Asia: 720, Europe: 520, Oceania: 1100 },
+  Americas: { Africa: 950, Americas: 320, Asia: 900, Europe: 650, Oceania: 980 },
+  Asia: { Africa: 720, Americas: 900, Asia: 260, Europe: 580, Oceania: 620 },
+  Europe: { Africa: 520, Americas: 650, Asia: 580, Europe: 180, Oceania: 1050 },
+  Oceania: { Africa: 1100, Americas: 980, Asia: 620, Europe: 1050, Oceania: 240 }
+};
+
+/**
+ * Country-to-country flight estimate from great-circle distance.
+ * Calibrated to typical mid-2020s economy fares (not peak/sale outliers).
+ */
 function flightCostPerPerson(from, to, flightType) {
   if (flightType === "none") return 0;
-  const sameRegion = from.region === to.region;
-  let seat = (sameRegion ? 220 : 720) * (0.85 + 0.15 * (((Number(from.col) || 1) + (Number(to.col) || 1)) / 2));
-  if (flightType.includes("premium")) seat *= 2.35;
-  if (flightType.startsWith("round")) seat *= 1.85;
+  if (from.code === to.code) return 0;
+
+  let km = haversineKm(from, to);
+  let seat;
+  if (km != null) {
+    // Base + distance: short-haul denser yield, long-haul lower per-km
+    if (km < 800) seat = 70 + km * 0.18;
+    else if (km < 3000) seat = 90 + km * 0.13;
+    else if (km < 7000) seat = 140 + km * 0.10;
+    else seat = 220 + km * 0.085;
+    seat = Math.max(55, Math.min(2400, seat));
+  } else {
+    const table = REGION_FLIGHT_USD[from.region] || REGION_FLIGHT_USD.Europe;
+    seat = table[to.region] || 700;
+  }
+
+  // Slight destination COL nudge (expensive hubs cost more to fly into)
+  seat *= 0.92 + 0.08 * Math.min(1.4, Number(to.col) || 1);
+
+  if (flightType.includes("premium")) seat *= 2.4;
+  if (flightType.startsWith("round")) seat *= 1.78;
   return Math.round(seat);
 }
 
@@ -117,14 +214,15 @@ function adminCosts(from, to, people, purpose, visa, papers, flightType) {
   const paperFee = (PAPERS_USD[papers] || 0) * p;
   const purposeAdmin = (PURPOSE_EXTRA_USD[purpose] || 0) * p;
   let visaExtras = 0;
-  if (visa !== "none" && ["US", "GB", "CA", "AU", "IN", "CN"].includes(to.code)) visaExtras += 40 * p;
-  if (visa === "work" || visa === "student" || visa === "residence") visaExtras += 80 * p;
-  if (visa !== "none" && purpose === "permanent") visaExtras += 150 * p;
+  if (visa !== "none" && ["US", "GB", "CA", "AU", "NZ", "IN", "CN"].includes(to.code)) visaExtras += 45 * p;
+  if (visa === "work" || visa === "student" || visa === "residence") visaExtras += 75 * p;
+  if (visa !== "none" && purpose === "permanent") visaExtras += 140 * p;
   const flights = flightCostPerPerson(from, to, flightType) * p;
   return {
     visaFee, visaExtras, paperFee, purposeAdmin, flights,
     admin: visaFee + paperFee + purposeAdmin + visaExtras,
-    visaRequired: visa !== "none"
+    visaRequired: visa !== "none",
+    flightKm: haversineKm(from, to)
   };
 }
 
@@ -134,7 +232,7 @@ function permanentMoveBudget(opts) {
   const monthly = monthlyBreakdown(to.col, life, p, 0);
   const a = adminCosts(from, to, people, purpose, visa, papers, flightType);
   const deposit = monthly.rows.housing * 2;
-  const householdSetup = (900 + 700 * (Number(to.col) || 1)) * (1 + 0.45 * (p - 1));
+  const householdSetup = (850 + 750 * (Number(to.col) || 1)) * (1 + 0.45 * (p - 1));
   const settling = monthly.total * 0.35;
   return {
     mode: "permanent",
@@ -146,24 +244,40 @@ function permanentMoveBudget(opts) {
   };
 }
 
+function travelDailyRates(to, life, people) {
+  const col = Math.max(0.14, Number(to.col) || 1);
+  const lifeSafe = Number(life) > 0 ? Number(life) : 1;
+  // Extra adults share rooms partially; children not modeled in travel people count
+  const p = Math.max(1, people | 0);
+  const roomScale = 1 + 0.55 * (p - 1);
+  const personScale = p;
+  return {
+    lodging: TRAVEL_DAILY_USD.lodging * col * lifeSafe * roomScale,
+    food: TRAVEL_DAILY_USD.food * col * lifeSafe * personScale,
+    transport: TRAVEL_DAILY_USD.transport * col * lifeSafe * Math.sqrt(p),
+    local: TRAVEL_DAILY_USD.local * col * lifeSafe * personScale
+  };
+}
+
 function stayBudget(opts) {
   const { from, to, days, people, life, purpose, visa, papers, flightType } = opts;
   if (purpose === "permanent") return permanentMoveBudget(opts);
 
   const d = Math.max(1, days | 0);
   const p = Math.max(1, people | 0);
-  const h = householdFactor(p, 0);
-  const monthly = Object.values(MONTHLY_USD).reduce((a, b) => a + b, 0) * (Number(to.col) || 1) * life * h;
-  const daily = monthly / 30;
-  const lodging = daily * 0.42 * d;
-  const food = daily * 0.28 * d;
-  const transport = daily * 0.14 * d;
-  const local = daily * 0.16 * d;
-  const arrival = daily * Math.min(18, Math.max(8, 22 - d / 20));
-  const purposeSetup = { visit: 1, business: 1.05, family: 1.1, medical: 1.15, nomad: 1.2, study: 1.35, work: 1.4 }[purpose] || 1;
+  const rates = travelDailyRates(to, life, p);
+  const lodging = rates.lodging * d;
+  const food = rates.food * d;
+  const transport = rates.transport * d;
+  const local = rates.local * d;
+  // Arrival buffer: airport transfer, SIM, first-day friction (~1–2 travel days)
+  const arrival = (rates.lodging + rates.food + rates.transport) * Math.min(2.2, Math.max(1.0, 2.4 - d / 25));
+  const purposeSetup = { visit: 1, business: 1.08, family: 1.1, medical: 1.18, nomad: 1.15, study: 1.3, work: 1.35 }[purpose] || 1;
   const setupExtra = arrival * (purposeSetup - 1);
   const a = adminCosts(from, to, people, purpose, visa, papers, flightType);
   const living = lodging + food + transport + local + arrival + setupExtra;
+  const monthly = monthlyBreakdown(to.col, life, p, 0).total;
+  const daily = (lodging + food + transport + local) / d;
   return {
     mode: "stay", total: living + a.admin + a.flights,
     lodging, food, transport, local, arrival: arrival + setupExtra,
