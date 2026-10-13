@@ -9,10 +9,13 @@ AbroadCost is a **static single-page application**. There is no required backend
 ```text
 Browser
   └─ index.html
-       ├─ relo.css          (light/dark theme, layout)
+       ├─ relo.css          (light/dark theme, layout, self-hosted type)
+       ├─ fonts/            (Cormorant Garamond and Outfit, latin woff2)
        ├─ world_data.js     (COUNTRIES, currencies metadata)
        └─ relo.js           (UI wiring + models + charts)
 ```
+
+Public files also include `favicon.svg`, `og.png`, `robots.txt`, `sitemap.xml`, and `404.html`. The Pages workflow copies them into the site root. Paths stay relative, so the same files work locally and at `https://arnold-rg.github.io/AbroadCost/`.
 
 ## Modules in `relo.js`
 
@@ -22,8 +25,9 @@ Browser
 | Monthly living | Household × lifestyle × COL basket |
 | Travel stay | Duration, purpose, visa, papers, flights |
 | Economy rates | `jobRates()` → living rate + general job |
-| Charts | Canvas bar / donut / grouped salary |
+| Charts | Canvas rank bars, regional GDP share, grouped salary |
 | Theme | `localStorage` key `abroadcost-theme` |
+| Country fields | Searchable comboboxes over the 195-country list |
 
 ## Deployment
 

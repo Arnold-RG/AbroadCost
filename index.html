@@ -2,291 +2,479 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="AbroadCost — living budgets, salaries, travel costs, and economy data for 195 countries.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>AbroadCost — Country budget planner</title>
+  <meta name="description" content="Compare monthly living costs, salaries, and travel budgets for 195 countries. Planning estimates from World Bank price levels, not a quote.">
+  <link rel="canonical" href="https://arnold-rg.github.io/AbroadCost/">
+  <meta name="theme-color" content="#f3eee6">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AbroadCost">
+  <meta property="og:url" content="https://arnold-rg.github.io/AbroadCost/">
+  <meta property="og:title" content="AbroadCost — Country budget planner">
+  <meta property="og:description" content="Monthly living costs, travel budgets, and salaries for 195 countries. Modeled estimates for comparison, not a quote.">
+  <meta property="og:image" content="https://arnold-rg.github.io/AbroadCost/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AbroadCost, a country budget planner covering 195 countries.">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AbroadCost — Country budget planner">
+  <meta name="twitter:description" content="Monthly living costs, travel budgets, and salaries for 195 countries.">
+  <meta name="twitter:image" content="https://arnold-rg.github.io/AbroadCost/og.png">
+  <meta name="twitter:image:alt" content="AbroadCost, a country budget planner covering 195 countries.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch.png">
+  <link rel="preload" href="fonts/cormorant-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/outfit-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="relo.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "AbroadCost",
+    "url": "https://arnold-rg.github.io/AbroadCost/",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Any",
+    "description": "Country budget planner for monthly living costs, travel budgets, salaries, and economy data across 195 countries.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "Arnova Group", "url": "https://github.com/Arnold-RG" },
+    "isAccessibleForFree": true
+  }
+  </script>
   <script>
     (function () {
       var saved = localStorage.getItem("abroadcost-theme");
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", theme === "dark" ? "#0c0f0e" : "#f3eee6");
     })();
   </script>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to planner</a>
   <div class="wrap">
-    <div class="top-tools">
-      <div class="theme-switch" role="group" aria-label="Theme">
-        <button type="button" id="theme-light" data-theme-set="light" aria-pressed="true">Light</button>
-        <button type="button" id="theme-dark" data-theme-set="dark" aria-pressed="false">Dark</button>
+    <header class="mast">
+      <div class="mast-bar">
+        <div class="mast-id">
+          <p class="brand">AbroadCost</p>
+          <p class="byline">Country budget planner</p>
+        </div>
+        <div class="theme-switch" role="group" aria-label="Color theme">
+          <button type="button" id="theme-light" data-theme-set="light" aria-pressed="true">Light</button>
+          <button type="button" id="theme-dark" data-theme-set="dark" aria-pressed="false">Dark</button>
+        </div>
       </div>
-    </div>
-
-    <header class="hero">
-      <p class="brand">AbroadCost</p>
-      <h1>Country budget planner</h1>
+      <h1>Plan a month, a trip, or a move.</h1>
+      <span class="rule" aria-hidden="true"></span>
       <p class="intro">
-        Monthly living costs, gross &amp; net salaries, traveling budgets,
-        and economy / job-rate charts for 195 countries.
+        Monthly living costs, travel budgets, and salaries for 195 countries,
+        across Africa, the Americas, Asia, Europe, and Oceania. The figures are
+        modeled so you can compare places. They are not a quote, and they are not advice.
       </p>
-      <p class="error" id="data-error" hidden></p>
+      <p class="error" id="data-error" role="alert" hidden></p>
     </header>
 
-    <nav class="tabs" aria-label="Modes">
-      <button type="button" class="on" data-tab="monthly">Monthly living</button>
-      <button type="button" data-tab="stay">Traveling budget cost</button>
-      <button type="button" data-tab="economy">Economy &amp; jobs</button>
+    <nav class="tabs" role="tablist" aria-label="Planner">
+      <button type="button" role="tab" id="tab-monthly" class="on" data-tab="monthly" aria-selected="true" aria-controls="panel-monthly" aria-label="Monthly living" tabindex="0"><span class="tab-long">Monthly living</span><span class="tab-short">Monthly</span></button>
+      <button type="button" role="tab" id="tab-stay" data-tab="stay" aria-selected="false" aria-controls="panel-stay" aria-label="Travel budget" tabindex="-1"><span class="tab-long">Travel budget</span><span class="tab-short">Travel</span></button>
+      <button type="button" role="tab" id="tab-economy" data-tab="economy" aria-selected="false" aria-controls="panel-economy" aria-label="Economy and jobs" tabindex="-1"><span class="tab-long">Economy and jobs</span><span class="tab-short">Economy</span></button>
     </nav>
 
-    <section class="panel on" id="panel-monthly">
-      <div class="panel-copy">
-        <h2>Monthly living budget</h2>
-        <p class="hint">
-          Real mid-tier living budgets scaled by each country’s World Bank price
-          level vs the USA, plus typical gross and net salary ranges.
-        </p>
-      </div>
-      <div class="form">
-        <div class="full">
-          <label for="m-country">Country</label>
-          <select id="m-country"></select>
+    <main id="main">
+      <section class="panel on" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
+        <div class="panel-copy">
+          <h2>Monthly living budget</h2>
+          <p class="hint">
+            A mid-tier month — rent, food, transport, utilities, healthcare, and the rest —
+            scaled by this country’s price level against the United States, then adjusted
+            for who is in the household and how tightly you want to live.
+          </p>
         </div>
-        <div>
-          <label for="m-adults">Adults</label>
-          <input id="m-adults" type="number" min="1" max="10" value="1">
-        </div>
-        <div>
-          <label for="m-children">Children</label>
-          <input id="m-children" type="number" min="0" max="10" value="0">
-        </div>
-        <div>
-          <label for="m-life">Lifestyle</label>
-          <select id="m-life">
-            <option value="0.8">Tight</option>
-            <option value="1" selected>Normal</option>
-            <option value="1.35">Comfortable</option>
-            <option value="1.85">High</option>
-          </select>
-        </div>
-        <div>
-          <label for="m-currency">Show in</label>
-          <select id="m-currency"></select>
-        </div>
-      </div>
-      <div class="result">
-        <div class="result-label">Estimated monthly living total</div>
-        <p class="big" id="m-total">—</p>
-        <div class="bar"><i id="m-bar"></i></div>
-        <div class="rows" id="m-rows"></div>
+        <div class="layout">
+          <form class="form" id="form-monthly">
+            <div class="field combo full">
+              <label for="m-country-q">Country</label>
+              <div class="combo-control">
+                <input id="m-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" aria-required="true">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="m-country-list" class="combo-list" role="listbox" aria-label="Countries" hidden></ul>
+              <input type="hidden" id="m-country" value="RW">
+            </div>
+            <div class="pair full">
+              <div class="field">
+                <label for="m-adults">Adults</label>
+                <input id="m-adults" type="number" inputmode="numeric" min="1" max="10" value="1">
+              </div>
+              <div class="field">
+                <label for="m-children">Children</label>
+                <input id="m-children" type="number" inputmode="numeric" min="0" max="10" value="0">
+              </div>
+            </div>
+            <div class="field">
+              <label for="m-life">Lifestyle</label>
+              <select id="m-life">
+                <option value="0.8">Tight</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.35">Comfortable</option>
+                <option value="1.85">High</option>
+              </select>
+              <p class="field-hint" id="m-life-hint"></p>
+            </div>
+            <div class="field combo">
+              <label for="m-currency-q">Show in</label>
+              <div class="combo-control">
+                <input id="m-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="m-currency-list" class="combo-list" role="listbox" aria-label="Currencies" hidden></ul>
+              <input type="hidden" id="m-currency" value="USD">
+            </div>
+            <div class="field combo full">
+              <label for="m-compare-q">Compare with</label>
+              <div class="combo-control">
+                <input id="m-compare-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-compare-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="m-compare-list" class="combo-list" role="listbox" aria-label="Comparison country" hidden></ul>
+              <input type="hidden" id="m-compare" value="">
+            </div>
+          </form>
 
-        <div class="salary-block">
-          <div class="result-label">Typical monthly salary (employee)</div>
-          <div class="kpi-row salary-kpis">
-            <div class="kpi">
-              <span>Gross range</span>
-              <strong id="m-gross">—</strong>
+          <div class="result">
+            <div class="figure" aria-live="polite">
+              <p class="eyebrow">Estimated monthly total</p>
+              <p class="big" id="m-total">—</p>
+              <p class="big-sub" id="m-total-sub">per month</p>
             </div>
-            <div class="kpi">
-              <span>Net range (take-home)</span>
-              <strong id="m-net">—</strong>
+            <div class="share" id="m-share" aria-hidden="true"></div>
+            <div class="rows" id="m-rows"></div>
+            <p class="quiet" id="m-usa"></p>
+            <p class="compare" id="m-compare-out"></p>
+
+            <div class="salary-block">
+              <h3>Typical monthly salary</h3>
+              <dl class="salary-dl">
+                <div>
+                  <dt>Gross range</dt>
+                  <dd id="m-gross">—</dd>
+                </div>
+                <div>
+                  <dt>Net range</dt>
+                  <dd id="m-net">—</dd>
+                </div>
+                <div>
+                  <dt>Average, gross to net</dt>
+                  <dd id="m-avg-salary">—</dd>
+                </div>
+              </dl>
+              <p class="quiet" id="m-cover"></p>
+              <p class="quiet" id="m-salary-note"></p>
             </div>
-            <div class="kpi">
-              <span>Avg gross → net</span>
-              <strong id="m-avg-salary">—</strong>
-            </div>
+            <p class="quiet" id="m-note"></p>
           </div>
-          <p class="note" id="m-salary-note"></p>
         </div>
-        <p class="note" id="m-note"></p>
-      </div>
-    </section>
+      </section>
 
-    <section class="panel" id="panel-stay">
-      <div class="panel-copy">
-        <h2>Traveling budget cost</h2>
-        <p class="hint">
-          Country-to-country costs use destination price levels, mid-range hotel/meal rates,
-          published visa fee ballparks, and great-circle flight estimates between capitals.
-          Permanent stay uses one-time move cost plus monthly living (no trip days).
-        </p>
-      </div>
-      <div class="form">
-        <div>
-          <label for="s-from">Leaving from</label>
-          <select id="s-from"></select>
+      <section class="panel" id="panel-stay" role="tabpanel" aria-labelledby="tab-stay" hidden>
+        <div class="panel-copy">
+          <h2>Traveling budget</h2>
+          <p class="hint">
+            Costs from one country to another: destination prices, a visa-fee ballpark,
+            paperwork, and a flight estimated from the distance between capitals.
+            A permanent stay is the move plus the monthly budget, without a day count.
+          </p>
         </div>
-        <div>
-          <label for="s-to">Going to</label>
-          <select id="s-to"></select>
-        </div>
-        <div>
-          <label for="s-purpose">Reason for traveling</label>
-          <select id="s-purpose">
-            <option value="visit">Visiting / tourism</option>
-            <option value="work">Work / employment</option>
-            <option value="study">Studying</option>
-            <option value="business">Business / meetings</option>
-            <option value="family">Family visit / joining family</option>
-            <option value="medical">Medical treatment</option>
-            <option value="nomad">Long stay / remote work</option>
-            <option value="permanent">Permanent stay / residence</option>
-          </select>
-        </div>
-        <div>
-          <label for="s-visa">Visa type</label>
-          <select id="s-visa">
-            <option value="none">No visa / visa-free / visa on arrival</option>
-            <option value="tourist" selected>Tourist visa</option>
-            <option value="business">Business visa</option>
-            <option value="student">Student visa</option>
-            <option value="work">Work / employment visa</option>
-            <option value="transit">Transit visa</option>
-            <option value="dependent">Dependent / family visa</option>
-            <option value="residence">Residence / permanent stay visa</option>
-          </select>
-        </div>
-        <div id="s-days-wrap">
-          <label for="s-days">Days staying</label>
-          <input id="s-days" type="number" min="1" max="730" value="30">
-        </div>
-        <div>
-          <label for="s-people">People</label>
-          <input id="s-people" type="number" min="1" max="12" value="1">
-        </div>
-        <div>
-          <label for="s-flight">Flight tickets</label>
-          <select id="s-flight">
-            <option value="one_economy">One-way, economy</option>
-            <option value="round_economy" selected>Round-trip, economy</option>
-            <option value="one_premium">One-way, premium / business</option>
-            <option value="round_premium">Round-trip, premium / business</option>
-            <option value="none">No flights (overland / already there)</option>
-          </select>
-        </div>
-        <div>
-          <label for="s-papers">Paper preparation</label>
-          <select id="s-papers">
-            <option value="basic">Basic (photos, forms, copies)</option>
-            <option value="standard" selected>Standard (notarize, translations, police clearance)</option>
-            <option value="full">Full pack (apostille, medicals, agent help)</option>
-            <option value="none">None / already done</option>
-          </select>
-        </div>
-        <div>
-          <label for="s-life">Lifestyle while there</label>
-          <select id="s-life">
-            <option value="0.8">Tight</option>
-            <option value="1" selected>Normal</option>
-            <option value="1.35">Comfortable</option>
-            <option value="1.85">High</option>
-          </select>
-        </div>
-        <div>
-          <label for="s-currency">Show in</label>
-          <select id="s-currency"></select>
-        </div>
-      </div>
-      <div class="result">
-        <div class="result-label">Estimated traveling budget</div>
-        <p class="big" id="s-total">—</p>
-        <div class="bar"><i id="s-bar"></i></div>
-        <div class="rows" id="s-rows"></div>
-        <p class="note" id="s-note"></p>
-      </div>
-    </section>
+        <div class="layout">
+          <form class="form" id="form-stay">
+            <div class="field combo">
+              <label for="s-from-q">Leaving from</label>
+              <div class="combo-control">
+                <input id="s-from-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-from-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="s-from-list" class="combo-list" role="listbox" aria-label="Origin countries" hidden></ul>
+              <input type="hidden" id="s-from" value="US">
+            </div>
+            <div class="field combo">
+              <label for="s-to-q">Going to</label>
+              <div class="combo-control">
+                <input id="s-to-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-to-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="s-to-list" class="combo-list" role="listbox" aria-label="Destination countries" hidden></ul>
+              <input type="hidden" id="s-to" value="RW">
+            </div>
+            <div class="full">
+              <button type="button" class="swap" id="s-swap">Swap countries</button>
+            </div>
+            <div class="field">
+              <label for="s-purpose">Reason for traveling</label>
+              <select id="s-purpose">
+                <option value="visit">Visiting / tourism</option>
+                <option value="work">Work / employment</option>
+                <option value="study">Studying</option>
+                <option value="business">Business / meetings</option>
+                <option value="family">Family visit / joining family</option>
+                <option value="medical">Medical treatment</option>
+                <option value="nomad">Long stay / remote work</option>
+                <option value="permanent">Permanent stay / residence</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="s-visa">Visa type</label>
+              <select id="s-visa">
+                <option value="none">No visa / visa-free / visa on arrival</option>
+                <option value="tourist" selected>Tourist visa</option>
+                <option value="business">Business visa</option>
+                <option value="student">Student visa</option>
+                <option value="work">Work / employment visa</option>
+                <option value="transit">Transit visa</option>
+                <option value="dependent">Dependent / family visa</option>
+                <option value="residence">Residence / permanent stay visa</option>
+              </select>
+            </div>
+            <div class="pair full">
+              <div class="field" id="s-days-wrap">
+                <label for="s-days">Days staying</label>
+                <input id="s-days" type="number" inputmode="numeric" min="1" max="730" value="30">
+              </div>
+              <div class="field">
+                <label for="s-people">People</label>
+                <input id="s-people" type="number" inputmode="numeric" min="1" max="12" value="1">
+              </div>
+            </div>
+            <div class="field">
+              <label for="s-flight">Flight tickets</label>
+              <select id="s-flight">
+                <option value="one_economy">One-way, economy</option>
+                <option value="round_economy" selected>Round-trip, economy</option>
+                <option value="one_premium">One-way, premium / business</option>
+                <option value="round_premium">Round-trip, premium / business</option>
+                <option value="none">No flights (overland / already there)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="s-papers">Paper preparation</label>
+              <select id="s-papers">
+                <option value="basic">Basic (photos, forms, copies)</option>
+                <option value="standard" selected>Standard (notarize, translations, police clearance)</option>
+                <option value="full">Full pack (apostille, medicals, agent help)</option>
+                <option value="none">None / already done</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="s-life">Lifestyle while there</label>
+              <select id="s-life">
+                <option value="0.8">Tight</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.35">Comfortable</option>
+                <option value="1.85">High</option>
+              </select>
+              <p class="field-hint" id="s-life-hint"></p>
+            </div>
+            <div class="field combo">
+              <label for="s-currency-q">Show in</label>
+              <div class="combo-control">
+                <input id="s-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </div>
+              <ul id="s-currency-list" class="combo-list" role="listbox" aria-label="Currencies" hidden></ul>
+              <input type="hidden" id="s-currency" value="USD">
+            </div>
+          </form>
 
-    <section class="panel" id="panel-economy">
-      <div class="panel-copy">
-        <h2>Economy, jobs &amp; salaries</h2>
-        <p class="hint">
-          GDP and growth, living rate from salary vs the living budget,
-          and how easy it is to obtain a general job.
-        </p>
-      </div>
-      <div class="form">
-        <div>
-          <label for="e-country">Country</label>
-          <select id="e-country"></select>
+          <div class="result">
+            <div class="figure" aria-live="polite">
+              <p class="eyebrow" id="s-result-label">Estimated traveling budget</p>
+              <p class="route" id="s-route"></p>
+              <p class="big" id="s-total">—</p>
+              <p class="big-sub" id="s-total-sub"></p>
+              <p class="route-meta" id="s-route-meta"></p>
+            </div>
+            <div class="share" id="s-share" aria-hidden="true"></div>
+            <div class="rows" id="s-rows"></div>
+            <p class="quiet" id="s-note"></p>
+          </div>
         </div>
-        <div>
-          <label for="e-region">Region</label>
-          <select id="e-region">
-            <option value="All">All regions</option>
-            <option value="Africa">Africa</option>
-            <option value="Americas">Americas</option>
-            <option value="Asia">Asia</option>
-            <option value="Europe">Europe</option>
-            <option value="Oceania">Oceania</option>
-          </select>
-        </div>
-        <div class="full">
-          <label for="e-search">Search table</label>
-          <input id="e-search" type="search" placeholder="Type a country name…">
-        </div>
-      </div>
+      </section>
 
-      <div class="kpi-row" id="e-kpis">
-        <div class="kpi"><span>GDP / year</span><strong id="e-gdp">—</strong></div>
-        <div class="kpi"><span>GDP growth / year</span><strong id="e-growth">—</strong></div>
-        <div class="kpi"><span>Living rate</span><strong id="e-live-rate">—</strong></div>
-        <div class="kpi"><span>Obtaining a general job</span><strong id="e-job-general">—</strong></div>
-        <div class="kpi"><span>Gross salary / month</span><strong id="e-gross">—</strong></div>
-        <div class="kpi"><span>Net salary / month</span><strong id="e-net">—</strong></div>
-      </div>
+      <section class="panel" id="panel-economy" role="tabpanel" aria-labelledby="tab-economy" hidden>
+        <div class="panel-copy">
+          <h2>Economy, jobs, and salaries</h2>
+          <p class="hint">
+            GDP and growth, read next to two planning rates: whether a typical take-home
+            salary covers a decent month, and how much pressure unemployment and pay put
+            on ordinary hiring.
+          </p>
+        </div>
+        <div class="filters">
+          <div class="field combo">
+            <label for="e-country-q">Country</label>
+            <div class="combo-control">
+              <input id="e-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="e-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+              <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </div>
+            <ul id="e-country-list" class="combo-list" role="listbox" aria-label="Countries" hidden></ul>
+            <input type="hidden" id="e-country" value="RW">
+          </div>
+          <div class="field">
+            <label for="e-region">Region</label>
+            <select id="e-region">
+              <option value="All">All regions</option>
+              <option value="Africa">Africa</option>
+              <option value="Americas">Americas</option>
+              <option value="Asia">Asia</option>
+              <option value="Europe">Europe</option>
+              <option value="Oceania">Oceania</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="e-search">Search the table</label>
+            <input id="e-search" type="search" placeholder="Name or code" autocomplete="off" aria-controls="e-table">
+          </div>
+        </div>
 
-      <div class="charts">
-        <div class="chart-box">
-          <h3>GDP (USD bn) — selected vs top peers</h3>
-          <canvas id="chart-gdp" height="220"></canvas>
+        <p class="sr-only" id="e-summary" aria-live="polite"></p>
+        <div class="stat-grid">
+          <div class="stat feature">
+            <span>Living rate</span>
+            <strong id="e-live-rate">—</strong>
+            <small>Typical take-home against a decent month</small>
+          </div>
+          <div class="stat feature">
+            <span>General job</span>
+            <strong id="e-job-general">—</strong>
+            <small>Hiring pressure for ordinary work, not a specialty</small>
+          </div>
+          <div class="stat">
+            <span>GDP</span>
+            <strong id="e-gdp">—</strong>
+          </div>
+          <div class="stat">
+            <span>Growth</span>
+            <strong id="e-growth">—</strong>
+          </div>
+          <div class="stat">
+            <span>Unemployment</span>
+            <strong id="e-unemp">—</strong>
+          </div>
+          <div class="stat">
+            <span>Population</span>
+            <strong id="e-pop">—</strong>
+          </div>
+          <div class="stat wide">
+            <span>Gross salary / month</span>
+            <strong id="e-gross">—</strong>
+          </div>
+          <div class="stat wide">
+            <span>Net salary / month</span>
+            <strong id="e-net">—</strong>
+          </div>
         </div>
-        <div class="chart-box">
-          <h3>GDP growth % — selected vs peers</h3>
-          <canvas id="chart-growth" height="220"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Living rate %</h3>
-          <canvas id="chart-live-rate" height="220"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Obtaining a general job %</h3>
-          <canvas id="chart-job-general" height="220"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>World GDP share by region</h3>
-          <canvas id="chart-region-gdp" height="240"></canvas>
-        </div>
-        <div class="chart-box full">
-          <h3>Gross vs net salary (USD / month)</h3>
-          <canvas id="chart-salary" height="240"></canvas>
-        </div>
-      </div>
 
-      <div class="table-wrap">
-        <table class="data-table" id="e-table">
-          <thead>
-            <tr>
-              <th>Country</th>
-              <th>Region</th>
-              <th>GDP bn</th>
-              <th>Growth</th>
-              <th>Living rate</th>
-              <th>General job</th>
-              <th>Gross / mo</th>
-              <th>Net / mo</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="note" id="e-note"></p>
-    </section>
+        <div class="charts">
+          <div class="chart-box">
+            <h3 id="chart-gdp-title">Largest economies</h3>
+            <canvas id="chart-gdp" aria-hidden="true"></canvas>
+            <p class="sr-only" id="chart-gdp-sum"></p>
+          </div>
+          <div class="chart-box">
+            <h3 id="chart-growth-title">Fastest growth</h3>
+            <canvas id="chart-growth" aria-hidden="true"></canvas>
+            <p class="sr-only" id="chart-growth-sum"></p>
+          </div>
+          <div class="chart-box">
+            <h3 id="chart-live-title">Living rate</h3>
+            <canvas id="chart-live-rate" aria-hidden="true"></canvas>
+            <p class="sr-only" id="chart-live-rate-sum"></p>
+          </div>
+          <div class="chart-box">
+            <h3 id="chart-job-title">General hiring</h3>
+            <canvas id="chart-job-general" aria-hidden="true"></canvas>
+            <p class="sr-only" id="chart-job-general-sum"></p>
+          </div>
+          <div class="chart-box">
+            <h3 id="chart-region-title">Share of listed GDP by region</h3>
+            <canvas id="chart-region-gdp" aria-hidden="true"></canvas>
+            <ul class="legend" id="region-legend"></ul>
+          </div>
+          <div class="chart-box">
+            <h3 id="chart-salary-title">Gross and net salary</h3>
+            <p class="chart-key"><i data-k="gross"></i> Gross <i data-k="net"></i> Net</p>
+            <canvas id="chart-salary" aria-hidden="true"></canvas>
+            <p class="sr-only" id="chart-salary-sum"></p>
+          </div>
+        </div>
+        <p class="quiet chart-note">The marked bar is the country you selected. GDP and growth use the filtered list. Living rate and hiring use that country’s region.</p>
+
+        <div class="table-wrap">
+          <table class="data-table" id="e-table">
+            <caption>
+              <span id="e-count">Countries</span>
+              <span class="cap-hint">Choose a row to inspect it</span>
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="name">Country</button></th>
+                <th scope="col" aria-sort="ascending"><button type="button" data-sort="region">Region</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="gdp">GDP (bn USD)</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="growth">Growth</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="liveRate">Living rate</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="jobGeneral">General job</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="grossAvg">Gross / month</button></th>
+                <th scope="col" aria-sort="none"><button type="button" data-sort="netAvg">Net / month</button></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="quiet" id="e-note"></p>
+      </section>
+    </main>
 
     <footer id="site-foot">
-      Covers 195 countries.
+      <p class="foot-brand"><span id="country-count">195</span> countries · Arnova Group</p>
+      <p>Planning estimates, not a quote and not financial advice. Price levels, wages, and visa fees change, and cities inside a country can differ widely.</p>
+      <details class="method">
+        <summary>How the numbers are made</summary>
+        <p>
+          Cost of living is a price level against the United States: the World Bank PPP
+          conversion factor divided by the official exchange rate, held inside a planning
+          band when dual exchange rates would distort it. The monthly budget starts from a
+          mid-tier US basket, then scales by that price level, the lifestyle you pick, and
+          household size. Another adult counts as about two-thirds of a basket, a child
+          about two-fifths, and housing grows more slowly than the rest.
+        </p>
+        <p>
+          Travel uses daily lodging, food, and local rates on the same price level, plus a
+          visa-fee ballpark, paperwork, and a flight from the distance between capitals.
+          A permanent move is a one-time relocation — deposit, setup, flights, papers —
+          plus the monthly budget.
+        </p>
+        <p>
+          Salaries are indicative formal-sector averages, with a low-to-high band at roughly
+          two-thirds to one-and-two-thirds of the average. Net pay uses an approximate tax
+          and social wedge. The living rate on the economy tab compares typical take-home
+          pay with a decent one-person budget. It is not the household budget from the
+          monthly tab. The general job figure blends unemployment, growth, and a mild drag
+          from very low pay. It is not a score for a specific profession.
+        </p>
+        <p id="source-line"></p>
+      </details>
+      <p class="foot-links">
+        <a href="https://arnold-rg.github.io/AbroadCost/">Live site</a>
+        <a href="https://github.com/Arnold-RG/AbroadCost">Source</a>
+        <a href="https://github.com/Arnold-RG/AbroadCost/blob/main/docs/DATA_AND_METHODOLOGY.md">Methodology</a>
+      </p>
     </footer>
   </div>
-
+  <noscript>
+    <p class="error noscript">AbroadCost calculates in the browser. Turn on JavaScript to use the planner.</p>
+  </noscript>
   <script src="world_data.js"></script>
   <script src="relo.js"></script>
 </body>

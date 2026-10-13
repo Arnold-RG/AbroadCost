@@ -6,7 +6,7 @@ const SALARY_SOURCE = window.RELO_SALARY_SOURCE || {};
 const FX = Object.fromEntries(CURRENCIES.map((c) => [c.code, Number(c.usd) || 1]));
 
 /**
- * Mid-tier USA monthly basket for one adult (comfortable, not luxury).
+ * Mid-tier USA monthly basket for one adult (comfortable, not a high lifestyle).
  * Anchored to Numbeo / BLS-style mid-city US costs (outside top global cores).
  * Other countries = basket × destination COL (WB price level vs USA).
  */
@@ -293,42 +293,6 @@ function sortedCurrencies() {
   return CURRENCIES.slice().sort((a, b) => a.code.localeCompare(b.code));
 }
 
-function fillCountrySelect(el, selected) {
-  if (!el) return;
-  if (!COUNTRIES.length) {
-    el.innerHTML = '<option value="">No countries loaded</option>';
-    return;
-  }
-  const list = sortedCountries();
-  el.innerHTML = list
-    .map((c) => `<option value="${c.code}">${c.name} — ${c.currency}</option>`)
-    .join("");
-  if (selected && COUNTRIES.some((c) => c.code === selected)) el.value = selected;
-}
-
-function fillCurrencySelect(el, selected) {
-  if (!el) return;
-  if (!CURRENCIES.length) {
-    el.innerHTML = '<option value="USD">USD — US Dollar</option>';
-    return;
-  }
-  const list = sortedCurrencies();
-  // Group A–Z with optgroups for easier scanning
-  const groups = {};
-  list.forEach((c) => {
-    const letter = (c.code[0] || "#").toUpperCase();
-    if (!groups[letter]) groups[letter] = [];
-    groups[letter].push(c);
-  });
-  el.innerHTML = Object.keys(groups).sort().map((letter) => {
-    const opts = groups[letter]
-      .map((c) => `<option value="${c.code}">${c.code} — ${c.name}</option>`)
-      .join("");
-    return `<optgroup label="${letter}">${opts}</optgroup>`;
-  }).join("");
-  if (selected && FX[selected]) el.value = selected;
-}
-
 function suggestVisaForPurpose(purpose) {
   return {
     visit: "tourist", work: "work", study: "student", business: "business",
@@ -347,26 +311,6 @@ function sourceFootnote() {
 function salaryRangeText(low, high, cur) {
   if (low == null || high == null) return "No wage series";
   return `${money(low, cur)} – ${money(high, cur)}`;
-}
-
-function renderSalary(c, cur) {
-  const has = c && c.grossAvg != null;
-  const g = document.getElementById("m-gross");
-  const n = document.getElementById("m-net");
-  const a = document.getElementById("m-avg-salary");
-  const note = document.getElementById("m-salary-note");
-  if (g) g.textContent = has ? salaryRangeText(c.grossLow, c.grossHigh, cur) : "—";
-  if (n) n.textContent = has ? salaryRangeText(c.netLow, c.netHigh, cur) : "—";
-  if (a) a.textContent = has ? `${money(c.grossAvg, cur)} → ${money(c.netAvg, cur)}` : "—";
-  if (note) {
-    if (!has) {
-      note.textContent = c ? `No salary range available for ${c.name}.` : "";
-      return;
-    }
-    const y = c.salaryYear ? ` (${c.salaryYear})` : "";
-    note.textContent =
-      `Typical employee gross/net range at 67%–167% of average wage${y}.`;
-  }
 }
 
 /**
@@ -451,49 +395,444 @@ function withJobRates(list) {
   });
 }
 
+const fields = {};
+let tableSort = { key: "region", dir: 1 };
+let urlReady = false;
+let urlTimer = 0;
+
+const LIFE_HINT = {
+  "0.8": "A tighter month, about a fifth under the mid-tier basket.",
+  "1": "The mid-tier basket, unchanged.",
+  "1.35": "A more comfortable month, about a third above the basket.",
+  "1.85": "A high month, close to twice the mid-tier basket."
+};
+
+const MONTH_LABELS = {
+  housing: "Housing / rent",
+  food: "Food",
+  transport: "Transport",
+  utilities: "Utilities and internet",
+  healthcare: "Healthcare",
+  other: "Other living costs"
+};
+
+const FLIGHT_LABEL = {
+  one_economy: "One-way economy",
+  round_economy: "Round-trip economy",
+  one_premium: "One-way premium",
+  round_premium: "Round-trip premium",
+  none: "No flights"
+};
+
+function scoreItem(item, q) {
+  const label = item.label.toLowerCase();
+  const code = String(item.value || "").toLowerCase();
+  const meta = (item.meta || "").toLowerCase();
+  if (!item.value && q) return label.startsWith(q) ? 1 : 0;
+  if (label.startsWith(q) || code.startsWith(q)) return 3;
+  const words = (label + " " + meta).split(/[^a-z0-9]+/);
+  if (words.some((word) => word.startsWith(q))) return 2;
+  return 0;
+}
+
+function countryItems() {
+  return sortedCountries().map((c) => ({
+    value: c.code,
+    label: c.name,
+    meta: c.region + " · " + c.currency
+  }));
+}
+
+function currencyItems() {
+  return sortedCurrencies().map((c) => ({
+    value: c.code,
+    label: c.code + " — " + c.name,
+    meta: c.symbol || ""
+  }));
+}
+
+function mountCombo(inputId, hiddenId, items, initial) {
+  const input = document.getElementById(inputId);
+  const hidden = document.getElementById(hiddenId);
+  const list = document.getElementById(inputId.replace(/-q$/, "-list"));
+  const combo = input.closest(".combo");
+  let open = false;
+  let typing = false;
+  let active = -1;
+  let filtered = items.slice();
+
+  function current() {
+    return items.find((item) => item.value === hidden.value) || null;
+  }
+
+  function restoreText() {
+    const item = current();
+    input.value = item ? item.label : "";
+    typing = false;
+  }
+
+  function query() {
+    return typing ? input.value.trim().toLowerCase() : "";
+  }
+
+  function place() {
+    const rect = input.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom;
+    list.classList.toggle("flip", below < 220 && rect.top > below);
+  }
+
+  function paint() {
+    const q = query();
+    filtered = items.filter((item) => !q || scoreItem(item, q) > 0);
+    if (q) filtered.sort((a, b) => scoreItem(b, q) - scoreItem(a, q) || a.label.localeCompare(b.label));
+    list.replaceChildren();
+    if (!filtered.length) {
+      const empty = document.createElement("li");
+      empty.setAttribute("role", "option");
+      empty.setAttribute("aria-disabled", "true");
+      empty.textContent = "No matches";
+      list.appendChild(empty);
+      active = -1;
+      input.removeAttribute("aria-activedescendant");
+      return;
+    }
+    if (active < 0 || active >= filtered.length) {
+      const selected = filtered.findIndex((item) => item.value === hidden.value);
+      active = selected >= 0 ? selected : 0;
+    }
+    filtered.forEach((item, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.id = list.id + "-opt-" + i;
+      li.dataset.value = item.value;
+      li.setAttribute("aria-selected", item.value === hidden.value ? "true" : "false");
+      if (i === active) li.classList.add("active");
+      const name = document.createElement("span");
+      name.className = "opt-name";
+      name.textContent = item.label;
+      const meta = document.createElement("span");
+      meta.className = "opt-meta";
+      meta.textContent = item.meta || "";
+      li.append(name, meta);
+      list.appendChild(li);
+    });
+    if (active >= 0) input.setAttribute("aria-activedescendant", list.id + "-opt-" + active);
+    else input.removeAttribute("aria-activedescendant");
+    const currentEl = list.querySelector(".active");
+    if (currentEl) {
+      const top = currentEl.offsetTop;
+      const bottom = top + currentEl.offsetHeight;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    }
+  }
+
+  function openList() {
+    const wasOpen = open;
+    open = true;
+    input.setAttribute("aria-expanded", "true");
+    list.hidden = false;
+    if (!wasOpen && !typing) active = -1;
+    paint();
+    place();
+  }
+
+  function closeList() {
+    open = false;
+    active = -1;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    list.hidden = true;
+  }
+
+  function commit(value) {
+    const item = items.find((row) => row.value === value);
+    if (!item) return;
+    hidden.value = item.value;
+    input.value = item.label;
+    typing = false;
+    closeList();
+    hidden.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function move(step) {
+    if (!open) openList();
+    if (!filtered.length) return;
+    if (active < 0) active = step > 0 ? 0 : filtered.length - 1;
+    else active = (active + step + filtered.length) % filtered.length;
+    paint();
+  }
+
+  input.addEventListener("focus", () => {
+    input.select();
+  });
+
+  input.addEventListener("click", () => {
+    if (open) {
+      restoreText();
+      closeList();
+    } else {
+      typing = false;
+      active = -1;
+      openList();
+      input.select();
+    }
+  });
+
+  input.addEventListener("input", () => {
+    typing = true;
+    active = 0;
+    openList();
+  });
+
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      move(1);
+    } else if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      move(-1);
+    } else if (ev.key === "Home") {
+      if (!open) return;
+      ev.preventDefault();
+      active = 0;
+      paint();
+    } else if (ev.key === "End") {
+      if (!open) return;
+      ev.preventDefault();
+      active = Math.max(0, filtered.length - 1);
+      paint();
+    } else if (ev.key === "Enter") {
+      if (!open) return;
+      ev.preventDefault();
+      if (active >= 0 && filtered[active]) commit(filtered[active].value);
+      else if (filtered.length === 1) commit(filtered[0].value);
+    } else if (ev.key === "Escape") {
+      if (!open) return;
+      ev.preventDefault();
+      restoreText();
+      closeList();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (combo.contains(document.activeElement)) return;
+      restoreText();
+      closeList();
+    }, 0);
+  });
+
+  list.addEventListener("pointerdown", (ev) => {
+    const opt = ev.target.closest("[role='option']");
+    if (!opt || opt.getAttribute("aria-disabled") === "true") return;
+    ev.preventDefault();
+    commit(opt.dataset.value);
+  });
+
+  document.addEventListener("pointerdown", (ev) => {
+    if (!combo.contains(ev.target)) {
+      restoreText();
+      closeList();
+    }
+  });
+
+  const api = {
+    set(value, notify) {
+      const item = items.find((row) => row.value === value);
+      if (!item) return;
+      hidden.value = item.value;
+      input.value = item.label;
+      typing = false;
+      if (notify) hidden.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  };
+  api.set(initial, false);
+  fields[hiddenId] = api;
+}
+
+function readNum(id, min, max, fallback) {
+  const raw = document.getElementById(id).value;
+  let v = Number(raw);
+  if (!Number.isFinite(v)) v = fallback;
+  return Math.min(max, Math.max(min, v));
+}
+
+function setBig(id, text) {
+  const el = document.getElementById(id);
+  const changed = el.textContent !== text && text !== "—";
+  el.textContent = text;
+  el.classList.toggle("is-long", text.length > 13);
+  if (changed && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.classList.remove("tick");
+    void el.offsetWidth;
+    el.classList.add("tick");
+  }
+}
+
+function paintShare(el, parts) {
+  el.replaceChildren();
+  const total = parts.reduce((sum, part) => sum + (part.value > 0 ? part.value : 0), 0);
+  if (total <= 0) return;
+  parts.forEach((part) => {
+    if (!(part.value > 0)) return;
+    const seg = document.createElement("i");
+    seg.dataset.k = part.key;
+    seg.style.width = ((part.value / total) * 100) + "%";
+    el.appendChild(seg);
+  });
+}
+
+function paintRows(el, lines) {
+  el.replaceChildren();
+  lines.forEach((line) => {
+    const row = document.createElement("div");
+    if (line.section) {
+      row.className = "row section";
+      const label = document.createElement("span");
+      label.textContent = line.label;
+      row.appendChild(label);
+    } else {
+      row.className = "row" + (line.total ? " total" : "");
+      const sw = document.createElement("i");
+      sw.className = "swatch";
+      if (line.key) sw.dataset.k = line.key;
+      else sw.style.visibility = "hidden";
+      const name = document.createElement("span");
+      name.textContent = line.label;
+      const pct = document.createElement("span");
+      pct.className = "pct";
+      pct.textContent = line.pct || "";
+      const amt = document.createElement("span");
+      amt.className = "amt";
+      amt.textContent = line.amount;
+      row.append(sw, name, pct, amt);
+    }
+    el.appendChild(row);
+  });
+}
+
+function pctOf(value, total) {
+  if (!(total > 0)) return "";
+  return Math.round((value / total) * 100) + "%";
+}
+
+function lifeHint(id, selectId) {
+  const el = document.getElementById(id);
+  const value = document.getElementById(selectId).value;
+  el.textContent = LIFE_HINT[value] || "";
+}
+
 function renderMonthly() {
   const c = country(document.getElementById("m-country").value);
   if (!c) return;
-  const adults = +document.getElementById("m-adults").value || 1;
-  const children = +document.getElementById("m-children").value || 0;
+  const adults = readNum("m-adults", 1, 10, 1);
+  const children = readNum("m-children", 0, 10, 0);
   const life = +document.getElementById("m-life").value || 1;
   const cur = document.getElementById("m-currency").value || "USD";
   const { rows, total } = monthlyBreakdown(c.col, life, adults, children);
+  lifeHint("m-life-hint", "m-life");
 
-  document.getElementById("m-total").textContent = money(total, cur) + " / month";
+  setBig("m-total", money(total, cur));
+  document.getElementById("m-total-sub").textContent = "per month";
+
+  const parts = Object.keys(rows).map((key) => ({ key, label: MONTH_LABELS[key], value: rows[key] }));
+  paintShare(document.getElementById("m-share"), parts);
+  paintRows(document.getElementById("m-rows"), parts.map((part) => ({
+    key: part.key,
+    label: part.label,
+    pct: pctOf(part.value, total),
+    amount: money(part.value, cur)
+  })));
+
   const usa = monthlyBreakdown(1, life, adults, children).total;
-  document.getElementById("m-bar").style.width = Math.min(100, (total / usa) * 55) + "%";
+  const usaEl = document.getElementById("m-usa");
+  usaEl.textContent = c.code === "US"
+    ? "The United States is the reference the other price levels scale from."
+    : "The same household in the United States would be " + money(usa, cur) + " a month.";
 
-  const labels = {
-    housing: "Housing / rent", food: "Food", transport: "Transport",
-    utilities: "Utilities & internet", healthcare: "Healthcare (out-of-pocket band)",
-    other: "Other living costs"
-  };
-  document.getElementById("m-rows").innerHTML = Object.keys(rows)
-    .map((k) => `<div class="row"><span>${labels[k]}</span><span>${money(rows[k], cur)}</span></div>`)
-    .join("");
+  const compareCode = document.getElementById("m-compare").value;
+  const compareEl = document.getElementById("m-compare-out");
+  const other = compareCode ? country(compareCode) : null;
+  if (!other || other.code === c.code) {
+    compareEl.textContent = "";
+  } else {
+    const otherTotal = monthlyBreakdown(other.col, life, adults, children).total;
+    const diff = otherTotal - total;
+    const gap = Math.abs(diff);
+    if (total > 0 && gap / total < 0.01) {
+      compareEl.textContent = other.name + " is within about 1% of this household budget.";
+    } else if (diff > 0) {
+      compareEl.textContent = other.name + " runs about " + money(gap, cur) + " higher each month for this household.";
+    } else {
+      compareEl.textContent = other.name + " runs about " + money(gap, cur) + " lower each month for this household.";
+    }
+  }
 
-  renderSalary(c, cur);
+  const has = c.grossAvg != null;
+  document.getElementById("m-gross").textContent = has ? salaryRangeText(c.grossLow, c.grossHigh, cur) : "—";
+  document.getElementById("m-net").textContent = has ? salaryRangeText(c.netLow, c.netHigh, cur) : "—";
+  document.getElementById("m-avg-salary").textContent = has ? money(c.grossAvg, cur) + " → " + money(c.netAvg, cur) : "—";
+
+  const cover = document.getElementById("m-cover");
+  if (c.netAvg == null || !(total > 0)) {
+    cover.textContent = "There is no wage series for " + c.name + ", so this budget cannot be set against a typical salary.";
+  } else {
+    const ratio = Number(c.netAvg) / total;
+    cover.textContent = "One typical net salary covers about " + ratio.toFixed(2) + "× this household budget.";
+  }
+
+  const note = document.getElementById("m-salary-note");
+  if (!has) note.textContent = "";
+  else {
+    const year = c.salaryYear ? " (" + c.salaryYear + ")" : "";
+    const tax = c.taxPct != null ? " About " + fmtNum(c.taxPct, 1) + "% of gross is modeled as tax and contributions." : "";
+    note.textContent = "The range runs from about two-thirds to one-and-two-thirds of the average wage" + year + "." + tax;
+  }
+
   document.getElementById("m-note").textContent =
-    `${c.name} · ${c.currency} · COL ${Number(c.col).toFixed(2)}` +
-    `${c.colYear ? ` (${c.colYear})` : ""} (1.00 = USA). Shown in ${cur}.`;
+    c.name + " · " + c.currency + " · price level " + Number(c.col).toFixed(2) +
+    (c.colYear ? " (" + c.colYear + ")" : "") +
+    ", where 1.00 is the United States. Amounts shown in " + cur + ".";
 }
 
 function syncPermanentUi(purpose) {
   const daysWrap = document.getElementById("s-days-wrap");
   const flight = document.getElementById("s-flight");
-  if (!daysWrap) return;
-  const isPermanent = purpose === "permanent";
-  daysWrap.style.display = isPermanent ? "none" : "";
-  if (isPermanent && flight && flight.value.startsWith("round")) flight.value = "one_economy";
+  const days = document.getElementById("s-days");
+  const permanent = purpose === "permanent";
+  daysWrap.hidden = permanent;
+  days.disabled = permanent;
+  if (permanent && flight && flight.value.startsWith("round")) flight.value = "one_economy";
+}
+
+function routeLine(from, to) {
+  const route = document.getElementById("s-route");
+  route.replaceChildren();
+  const a = document.createElement("span");
+  a.className = "name";
+  a.textContent = from.name;
+  const mid = document.createElement("span");
+  mid.className = "to";
+  mid.textContent = "to";
+  const b = document.createElement("span");
+  b.className = "name";
+  b.textContent = to.name;
+  route.append(a, mid, b);
+}
+
+function kmText(km) {
+  if (km == null) return "";
+  if (km < 1) return "Same capital";
+  return "About " + Math.round(km).toLocaleString() + " km between capitals";
 }
 
 function renderStay() {
   const from = country(document.getElementById("s-from").value);
   const to = country(document.getElementById("s-to").value);
   if (!from || !to) return;
-  const days = +document.getElementById("s-days").value || 30;
-  const people = +document.getElementById("s-people").value || 1;
+  const days = readNum("s-days", 1, 730, 30);
+  const people = readNum("s-people", 1, 12, 1);
   const life = +document.getElementById("s-life").value || 1;
   const purpose = document.getElementById("s-purpose").value;
   const visa = document.getElementById("s-visa").value;
@@ -501,455 +840,764 @@ function renderStay() {
   const flightType = document.getElementById("s-flight").value;
   const cur = document.getElementById("s-currency").value || "USD";
   syncPermanentUi(purpose);
-
+  lifeHint("s-life-hint", "s-life");
   const b = stayBudget({ from, to, days, people, life, purpose, visa, papers, flightType });
-  const labelEl = document.querySelector("#panel-stay .result-label");
+  routeLine(from, to);
+
+  const distance = kmText(b.flightKm);
+  const flightLabel = FLIGHT_LABEL[flightType] || "";
+  const meta = [distance, flightLabel, PURPOSE_LABEL[purpose]].filter(Boolean).join(" · ");
+  document.getElementById("s-route-meta").textContent = meta;
 
   if (b.mode === "permanent") {
-    if (labelEl) labelEl.textContent = "Cost to move there (one-time)";
-    document.getElementById("s-total").textContent = money(b.moveTotal, cur);
-    document.getElementById("s-bar").style.width =
-      Math.min(100, (b.moveTotal / (b.monthlyTotal * 6 + 8000)) * 100) + "%";
-    const monthLabels = {
-      housing: "Housing / rent", food: "Food", transport: "Transport",
-      utilities: "Utilities & internet", healthcare: "Healthcare (out-of-pocket band)",
-      other: "Other living costs"
-    };
-    const lines = [
-      ["— One-time move cost —", null],
-      [b.visaRequired ? `Visa fee (${VISA_LABEL[visa]})` : "Visa fee (not required)", b.visaFee],
-      ["Visa extras", b.visaExtras],
-      ["Paper preparation", b.paperFee],
-      [`Purpose admin (${PURPOSE_LABEL[purpose]})`, b.purposeAdmin],
-      ["Flight tickets", b.flights],
-      ["Housing deposit (≈ 2 months)", b.deposit],
-      ["Household setup", b.householdSetup],
-      ["Settling buffer", b.settling],
-      ["Move total", b.moveTotal],
-      ["— Monthly living —", null],
-      ...Object.keys(b.monthlyRows).map((k) => [monthLabels[k], b.monthlyRows[k]]),
-      ["Monthly living total", b.monthlyTotal]
+    document.getElementById("s-result-label").textContent = "One-time cost to move";
+    setBig("s-total", money(b.moveTotal, cur));
+    document.getElementById("s-total-sub").textContent = "then " + money(b.monthlyTotal, cur) + " a month to live there";
+    const moveParts = [
+      { key: "visa", label: b.visaRequired ? "Visa fee (" + VISA_LABEL[visa] + ")" : "Visa fee, not required", value: b.visaFee },
+      { key: "papers", label: "Visa extras", value: b.visaExtras },
+      { key: "papers", label: "Paper preparation", value: b.paperFee },
+      { key: "purpose", label: "Purpose admin (" + PURPOSE_LABEL[purpose] + ")", value: b.purposeAdmin },
+      { key: "flights", label: "Flight tickets", value: b.flights },
+      { key: "deposit", label: "Housing deposit, about two months", value: b.deposit },
+      { key: "setup", label: "Household setup", value: b.householdSetup },
+      { key: "settling", label: "Settling buffer", value: b.settling }
     ];
-    document.getElementById("s-rows").innerHTML = lines.map(([t, v]) =>
-      v === null
-        ? `<div class="row section"><span>${t}</span><span></span></div>`
-        : `<div class="row"><span>${t}</span><span>${money(v, cur)}</span></div>`
-    ).join("");
+    paintShare(document.getElementById("s-share"), moveParts);
+    const lines = [{ section: true, label: "One-time move" }];
+    moveParts.forEach((part) => {
+      if (!(part.value > 0) && part.key !== "visa") return;
+      lines.push({
+        key: part.key,
+        label: part.label,
+        pct: pctOf(part.value, b.moveTotal),
+        amount: money(part.value, cur)
+      });
+    });
+    lines.push({ total: true, label: "Move total", amount: money(b.moveTotal, cur) });
+    lines.push({ section: true, label: "Monthly living after arrival" });
+    Object.keys(b.monthlyRows).forEach((key) => {
+      lines.push({
+        key: key,
+        label: MONTH_LABELS[key],
+        pct: pctOf(b.monthlyRows[key], b.monthlyTotal),
+        amount: money(b.monthlyRows[key], cur)
+      });
+    });
+    lines.push({ total: true, label: "Monthly living total", amount: money(b.monthlyTotal, cur) });
+    paintRows(document.getElementById("s-rows"), lines);
     document.getElementById("s-note").textContent =
-      `${from.name} → ${to.name} permanent stay. One-time move + monthly living. Shown in ${cur}.`;
+      from.name + " to " + to.name + ", as a permanent stay. Shown in " + cur + ".";
     return;
   }
 
-  if (labelEl) labelEl.textContent = "Estimated traveling budget";
-  document.getElementById("s-total").textContent = money(b.total, cur) + ` for ${days} days`;
-  document.getElementById("s-bar").style.width =
-    Math.min(100, (b.total / (b.monthlyEquivalent * Math.max(1, days / 30) * 1.8 + 2000)) * 100) + "%";
-
-  const lines = [
-    ["— Living while there —", null],
-    ["Lodging / stay housing", b.lodging],
-    ["Food", b.food],
-    ["Local transport", b.transport],
-    ["Day-to-day / misc", b.local],
-    ["Arrival / setup buffer", b.arrival],
-    ["— Papers, visa & flights —", null],
-    [b.visaRequired ? `Visa fee (${VISA_LABEL[visa]})` : "Visa fee (not required)", b.visaFee],
-    ["Visa extras", b.visaExtras],
-    ["Paper preparation", b.paperFee],
-    [`Purpose admin (${PURPOSE_LABEL[purpose]})`, b.purposeAdmin],
-    ["Flight tickets", b.flights],
-    ["— Totals —", null],
-    ["Living subtotal", b.living],
-    ["Admin + flights", b.admin + b.flights],
-    ["Average living / day", b.daily]
+  document.getElementById("s-result-label").textContent = "Estimated traveling budget";
+  setBig("s-total", money(b.total, cur));
+  document.getElementById("s-total-sub").textContent = "for " + days + " day" + (days === 1 ? "" : "s");
+  const parts = [
+    { key: "lodging", label: "Lodging", value: b.lodging },
+    { key: "food", label: "Food", value: b.food },
+    { key: "transport", label: "Local transport", value: b.transport },
+    { key: "local", label: "Day to day", value: b.local },
+    { key: "arrival", label: "Arrival and setup", value: b.arrival },
+    { key: "visa", label: b.visaRequired ? "Visa fee (" + VISA_LABEL[visa] + ")" : "Visa fee, not required", value: b.visaFee },
+    { key: "papers", label: "Visa extras", value: b.visaExtras },
+    { key: "papers", label: "Paper preparation", value: b.paperFee },
+    { key: "purpose", label: "Purpose admin (" + PURPOSE_LABEL[purpose] + ")", value: b.purposeAdmin },
+    { key: "flights", label: "Flight tickets", value: b.flights }
   ];
-  document.getElementById("s-rows").innerHTML = lines.map(([t, v]) =>
-    v === null
-      ? `<div class="row section"><span>${t}</span><span></span></div>`
-      : `<div class="row"><span>${t}</span><span>${money(v, cur)}</span></div>`
-  ).join("");
+  paintShare(document.getElementById("s-share"), parts);
+  const lines = [{ section: true, label: "While you are there" }];
+  parts.forEach((part) => {
+    if (!(part.value > 0) && part.key !== "visa" && part.key !== "flights") return;
+    if (part.key === "flights" && !(part.value > 0)) return;
+    lines.push({
+      key: part.key,
+      label: part.label,
+      pct: pctOf(part.value, b.total),
+      amount: money(part.value, cur)
+    });
+  });
+  lines.push({ total: true, label: "Trip total", amount: money(b.total, cur) });
+  lines.push({ label: "Average living per day", amount: money(b.daily, cur) });
+  paintRows(document.getElementById("s-rows"), lines);
+  const peopleLabel = people + " " + (people === 1 ? "person" : "people");
   document.getElementById("s-note").textContent =
-    `${from.name} → ${to.name}. ${PURPOSE_LABEL[purpose]} · ${VISA_LABEL[visa]}. ` +
-    `${days} days · ${people} person${people > 1 ? "s" : ""}. Shown in ${cur}.`;
+    from.name + " to " + to.name + ". " + PURPOSE_LABEL[purpose] + " · " + VISA_LABEL[visa] +
+    ". " + days + " days · " + peopleLabel + ". Shown in " + cur + ".";
 }
 
 function cssVar(name, fallback) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-function filteredEconomyList() {
-  const region = document.getElementById("e-region")?.value || "All";
-  const q = (document.getElementById("e-search")?.value || "").toLowerCase().trim();
-  let list = COUNTRIES.slice();
-  if (region !== "All") list = list.filter((c) => c.region === region);
-  if (q) list = list.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
-  return list;
-}
-
 function prepCanvas(canvasId, height) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
   const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = canvas.clientWidth || 320;
-  const h = height || 220;
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
+  const h = height;
+  canvas.style.height = h + "px";
+  canvas.width = Math.max(1, Math.round(w * dpr));
+  canvas.height = Math.max(1, Math.round(h * dpr));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  return { canvas, ctx, w, h };
+  return { ctx, w, h };
 }
 
-function drawBarChart(canvasId, items, valueKey, highlightCode, height) {
-  const prep = prepCanvas(canvasId, height || 220);
-  if (!prep) return;
-  const { ctx, w, h } = prep;
-
-  const usable = items.filter((i) => i[valueKey] != null && !Number.isNaN(Number(i[valueKey])));
-  if (!usable.length) {
-    ctx.fillStyle = cssVar("--muted", "#666");
-    ctx.font = "13px Arial, sans-serif";
-    ctx.fillText("No data", 16, 40);
-    return;
-  }
-
-  const ink = cssVar("--ink", "#222");
-  const muted = cssVar("--muted", "#666");
-  const accent = cssVar("--accent", "#1a4f8b");
-  const line = cssVar("--line", "#ccc");
-  const padL = 36, padR = 10, padT = 12, padB = 48;
-  const plotW = w - padL - padR;
-  const plotH = h - padT - padB;
-  const max = Math.max(...usable.map((i) => Number(i[valueKey]) || 0), 0.1);
-
-  ctx.strokeStyle = line;
-  ctx.beginPath();
-  ctx.moveTo(padL, padT);
-  ctx.lineTo(padL, padT + plotH);
-  ctx.lineTo(padL + plotW, padT + plotH);
-  ctx.stroke();
-
-  const gap = plotW / usable.length;
-  usable.forEach((item, i) => {
-    const v = Number(item[valueKey]) || 0;
-    const bh = (v / max) * (plotH - 4);
-    const bw = Math.max(8, gap * 0.55);
-    const x = padL + i * gap + (gap - bw) / 2;
-    const y = padT + plotH - bh;
-    ctx.fillStyle = item.code === highlightCode ? accent : muted;
-    ctx.fillRect(x, y, bw, bh);
-    ctx.fillStyle = ink;
-    ctx.font = "11px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.save();
-    ctx.translate(x + bw / 2, padT + plotH + 10);
-    ctx.rotate(-0.55);
-    ctx.fillText(item.code || item.label || "", 0, 0);
-    ctx.restore();
-  });
+function fitText(ctx, text, max) {
+  if (ctx.measureText(text).width <= max) return text;
+  let cut = text;
+  while (cut.length > 1 && ctx.measureText(cut + "…").width > max) cut = cut.slice(0, -1);
+  return cut + "…";
 }
 
-function drawDonutChart(canvasId, slices) {
-  const prep = prepCanvas(canvasId, 240);
-  if (!prep) return;
-  const { ctx, w, h } = prep;
-  const total = slices.reduce((a, s) => a + (s.value || 0), 0);
-  if (!total) {
-    ctx.fillStyle = cssVar("--muted", "#666");
-    ctx.font = "13px Arial, sans-serif";
-    ctx.fillText("No data", 16, 40);
+function drawRank(canvasId, items, valueKey, highlight, opts) {
+  const rows = (items || []).filter((item) => item[valueKey] != null && Number.isFinite(Number(item[valueKey])));
+  const format = (opts && opts.format) || ((v) => fmtNum(v, 1));
+  const signed = !!(opts && opts.signed);
+  const sum = document.getElementById(canvasId + "-sum");
+  if (!rows.length) {
+    const prep = prepCanvas(canvasId, 64);
+    if (prep) {
+      prep.ctx.fillStyle = cssVar("--muted", "#5c564c");
+      prep.ctx.font = "400 13px Outfit, sans-serif";
+      prep.ctx.textBaseline = "top";
+      prep.ctx.fillText("Nothing to plot for this selection.", 2, 16);
+    }
+    if (sum) sum.textContent = "No data to plot.";
     return;
   }
-  const colors = ["#1a4f8b", "#0f6b5c", "#8a5a12", "#6b3fa0", "#b33b3b", "#3a7ca5"];
-  const cx = w * 0.38;
-  const cy = h / 2;
-  const r = Math.min(w, h) * 0.32;
-  let angle = -Math.PI / 2;
-  slices.forEach((s, i) => {
-    const slice = ((s.value || 0) / total) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, angle, angle + slice);
-    ctx.closePath();
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fill();
-    angle += slice;
-  });
-  // hole
-  ctx.beginPath();
-  ctx.fillStyle = cssVar("--bg", "#f0f0ee");
-  ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
-  ctx.fill();
-
-  const ink = cssVar("--ink", "#222");
-  const muted = cssVar("--muted", "#666");
-  let ly = 28;
-  slices.forEach((s, i) => {
-    const pct = ((s.value || 0) / total) * 100;
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fillRect(w * 0.68, ly - 8, 10, 10);
-    ctx.fillStyle = ink;
-    ctx.font = "12px Arial, sans-serif";
+  const height = 12 + rows.length * 28;
+  const prep = prepCanvas(canvasId, height);
+  if (!prep) return;
+  const ctx = prep.ctx;
+  const w = prep.w;
+  const ink = cssVar("--ink", "#1b1916");
+  const muted = cssVar("--muted", "#5c564c");
+  const hi = cssVar("--bar-hi", "#16382e");
+  const bar = cssVar("--bar-muted", "#c4b49a");
+  const line = cssVar("--line", "#e4dccf");
+  const vals = rows.map((row) => Number(row[valueKey]));
+  let min = signed ? Math.min(0, ...vals) : 0;
+  let max = Math.max(0, ...vals);
+  if (max === min) max = min + 1;
+  const labelW = Math.min(156, Math.max(88, w * 0.34));
+  const valueW = 76;
+  const x0 = labelW + 12;
+  const plotW = Math.max(24, w - x0 - valueW);
+  const span = max - min;
+  const zeroX = x0 + ((0 - min) / span) * plotW;
+  ctx.font = "400 12.5px Outfit, sans-serif";
+  ctx.textBaseline = "middle";
+  rows.forEach((item, i) => {
+    const v = Number(item[valueKey]);
+    const y = 8 + i * 28;
+    const selected = item.code === highlight;
+    ctx.fillStyle = selected ? ink : muted;
     ctx.textAlign = "left";
-    ctx.fillText(`${s.label} ${pct.toFixed(0)}%`, w * 0.68 + 16, ly);
-    ctx.fillStyle = muted;
-    ctx.font = "11px Arial, sans-serif";
-    ctx.fillText(`USD ${fmtNum(s.value, 0)} bn`, w * 0.68 + 16, ly + 14);
-    ly += 34;
+    const label = item.name || item.code || "";
+    ctx.fillText(fitText(ctx, label, labelW), 0, y + 8);
+    const x1 = x0 + ((v - min) / span) * plotW;
+    const left = Math.min(zeroX, x1);
+    const width = Math.max(1.5, Math.abs(x1 - zeroX));
+    ctx.fillStyle = selected ? hi : bar;
+    ctx.fillRect(left, y + 2, width, 11);
+    ctx.fillStyle = ink;
+    ctx.textAlign = "right";
+    ctx.fillText(format(v), w - 1, y + 8);
+  });
+  if (signed && min < 0) {
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(zeroX, 4);
+    ctx.lineTo(zeroX, height - 4);
+    ctx.stroke();
+  }
+  if (sum) {
+    sum.textContent = rows.map((row) => (row.name || row.code) + ": " + format(Number(row[valueKey]))).join(". ") + ".";
+  }
+}
+
+function drawRegionShare(slices) {
+  const total = slices.reduce((sum, slice) => sum + (slice.value || 0), 0);
+  const prep = prepCanvas("chart-region-gdp", 28);
+  const legend = document.getElementById("region-legend");
+  if (legend) legend.replaceChildren();
+  if (!prep || !total) return;
+  const ctx = prep.ctx;
+  let x = 0;
+  slices.forEach((slice, i) => {
+    const width = ((slice.value || 0) / total) * prep.w;
+    ctx.fillStyle = cssVar("--c" + (i + 1), "#16382e");
+    ctx.fillRect(x, 8, Math.max(0, width - 3), 10);
+    x += width;
+    if (!legend) return;
+    const li = document.createElement("li");
+    const sw = document.createElement("i");
+    sw.dataset.k = "c" + (i + 1);
+    const pct = ((slice.value || 0) / total) * 100;
+    li.append(sw, document.createTextNode(slice.label + " " + pct.toFixed(0) + "% · USD " + fmtNum(slice.value, 0) + " bn"));
+    legend.appendChild(li);
   });
 }
 
-function drawGroupedSalary(canvasId, country) {
-  const prep = prepCanvas(canvasId, 240);
-  if (!prep) return;
-  const { ctx, w, h } = prep;
-  if (!country || country.grossAvg == null) {
-    ctx.fillStyle = cssVar("--muted", "#666");
-    ctx.font = "13px Arial, sans-serif";
-    ctx.fillText("No salary series for this country", 16, 40);
+function drawSalary(countryRow) {
+  const sum = document.getElementById("chart-salary-sum");
+  if (!countryRow || countryRow.grossAvg == null) {
+    const prep = prepCanvas("chart-salary", 64);
+    if (prep) {
+      prep.ctx.fillStyle = cssVar("--muted", "#5c564c");
+      prep.ctx.font = "400 13px Outfit, sans-serif";
+      prep.ctx.textBaseline = "top";
+      prep.ctx.fillText("No salary series for this country.", 2, 16);
+    }
+    if (sum) sum.textContent = "No salary series for this country.";
     return;
   }
-  const ink = cssVar("--ink", "#222");
-  const accent = cssVar("--accent", "#1a4f8b");
-  const muted = cssVar("--muted", "#666");
-  const line = cssVar("--line", "#ccc");
+  const prep = prepCanvas("chart-salary", 180);
+  if (!prep) return;
+  const ctx = prep.ctx;
+  const w = prep.w;
+  const h = prep.h;
+  const ink = cssVar("--ink", "#1b1916");
+  const gross = cssVar("--bar-hi", "#16382e");
+  const net = cssVar("--bar-muted", "#c4b49a");
+  const line = cssVar("--line", "#e4dccf");
   const pairs = [
-    { label: "Low", g: country.grossLow, n: country.netLow },
-    { label: "Average", g: country.grossAvg, n: country.netAvg },
-    { label: "High", g: country.grossHigh, n: country.netHigh }
+    { label: "Low", g: countryRow.grossLow, n: countryRow.netLow },
+    { label: "Average", g: countryRow.grossAvg, n: countryRow.netAvg },
+    { label: "High", g: countryRow.grossHigh, n: countryRow.netHigh }
   ];
-  const max = Math.max(...pairs.flatMap((p) => [p.g || 0, p.n || 0]), 1);
-  const padL = 44, padR = 12, padT = 20, padB = 40;
-  const plotW = w - padL - padR;
+  const max = Math.max(...pairs.flatMap((pair) => [pair.g || 0, pair.n || 0]), 1);
+  const padL = 8;
+  const padB = 28;
+  const padT = 12;
   const plotH = h - padT - padB;
+  const groupW = (w - padL) / pairs.length;
   ctx.strokeStyle = line;
   ctx.beginPath();
-  ctx.moveTo(padL, padT);
-  ctx.lineTo(padL, padT + plotH);
-  ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.moveTo(padL, padT + plotH);
+  ctx.lineTo(w - 4, padT + plotH);
   ctx.stroke();
-
-  const groupW = plotW / pairs.length;
-  pairs.forEach((p, i) => {
-    const bx = padL + i * groupW + groupW * 0.2;
-    const bw = groupW * 0.25;
-    const gh = ((p.g || 0) / max) * (plotH - 4);
-    const nh = ((p.n || 0) / max) * (plotH - 4);
-    ctx.fillStyle = accent;
-    ctx.fillRect(bx, padT + plotH - gh, bw, gh);
-    ctx.fillStyle = muted;
-    ctx.fillRect(bx + bw + 6, padT + plotH - nh, bw, nh);
+  ctx.font = "400 12px Outfit, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  pairs.forEach((pair, i) => {
+    const bw = Math.min(28, groupW * 0.22);
+    const x = padL + i * groupW + groupW * 0.5 - bw - 4;
+    const gh = ((pair.g || 0) / max) * (plotH - 4);
+    const nh = ((pair.n || 0) / max) * (plotH - 4);
+    ctx.fillStyle = gross;
+    ctx.fillRect(x, padT + plotH - gh, bw, gh);
+    ctx.fillStyle = net;
+    ctx.fillRect(x + bw + 8, padT + plotH - nh, bw, nh);
     ctx.fillStyle = ink;
-    ctx.font = "11px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(p.label, padL + i * groupW + groupW / 2, padT + plotH + 18);
+    ctx.fillText(pair.label, padL + i * groupW + groupW * 0.5, h - 8);
   });
-  ctx.fillStyle = accent;
-  ctx.fillRect(padL, 6, 10, 10);
-  ctx.fillStyle = ink;
-  ctx.font = "11px Arial, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("Gross", padL + 14, 15);
-  ctx.fillStyle = muted;
-  ctx.fillRect(padL + 60, 6, 10, 10);
-  ctx.fillStyle = ink;
-  ctx.fillText("Net", padL + 74, 15);
+  if (sum) {
+    sum.textContent = pairs.map((pair) =>
+      pair.label + " gross " + money(pair.g, "USD") + ", net " + money(pair.n, "USD")
+    ).join(". ") + ".";
+  }
 }
 
-function renderEconomy() {
+function filteredEconomyList() {
+  const region = document.getElementById("e-region").value || "All";
+  const q = (document.getElementById("e-search").value || "").toLowerCase().trim();
+  let list = COUNTRIES.slice();
+  if (region !== "All") list = list.filter((row) => row.region === region);
+  if (q) {
+    list = list.filter((row) => scoreItem({ label: row.name, value: row.code, meta: row.region }, q) > 0);
+  }
+  return list;
+}
+
+function pickTop(arr, key, n, include) {
+  const out = [];
+  const seen = new Set();
+  if (include && include[key] != null) {
+    out.push(include);
+    seen.add(include.code);
+  }
+  for (const row of arr) {
+    if (seen.has(row.code) || row[key] == null) continue;
+    out.push(row);
+    seen.add(row.code);
+    if (out.length >= n) break;
+  }
+  return out.sort((a, b) => (b[key] || 0) - (a[key] || 0));
+}
+
+function sortRows(list) {
+  const dir = tableSort.dir;
+  const key = tableSort.key;
+  return list.slice().sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    const aMissing = av == null || av === "";
+    const bMissing = bv == null || bv === "";
+    if (aMissing && bMissing) return a.name.localeCompare(b.name);
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+    if (typeof av === "number" && typeof bv === "number") {
+      if (av !== bv) return (av - bv) * dir;
+      return a.name.localeCompare(b.name);
+    }
+    const cmp = String(av).localeCompare(String(bv));
+    if (cmp !== 0) return cmp * dir;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function paintTable(list, selected) {
+  const tbody = document.querySelector("#e-table tbody");
+  const count = document.getElementById("e-count");
+  count.textContent = list.length === 1 ? "1 country" : list.length + " countries";
+  tbody.replaceChildren();
+  if (!list.length) {
+    const tr = document.createElement("tr");
+    tr.className = "empty-row";
+    const td = document.createElement("td");
+    td.colSpan = 8;
+    td.textContent = "No country matches that search.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  sortRows(list).forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.dataset.code = row.code;
+    if (row.code === selected) tr.className = "on";
+    const values = [
+      row.name,
+      row.region,
+      row.gdp == null ? "—" : fmtNum(row.gdp, 1),
+      row.growth == null ? "—" : (row.growth >= 0 ? "+" : "") + row.growth + "%",
+      row.liveRate == null ? "—" : row.liveRate + "%",
+      row.jobGeneral == null ? "—" : row.jobGeneral + "%",
+      row.grossAvg == null ? "—" : money(row.grossAvg, "USD"),
+      row.netAvg == null ? "—" : money(row.netAvg, "USD")
+    ];
+    values.forEach((value, index) => {
+      const td = document.createElement("td");
+      if (index === 0) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "row-btn";
+        btn.textContent = value;
+        if (row.code === selected) btn.setAttribute("aria-current", "true");
+        td.appendChild(btn);
+      } else td.textContent = value;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll("#e-table th").forEach((th) => {
+    const key = th.querySelector("[data-sort]").dataset.sort;
+    if (key === tableSort.key) th.setAttribute("aria-sort", tableSort.dir > 0 ? "ascending" : "descending");
+    else th.setAttribute("aria-sort", "none");
+  });
+}
+
+function fmtPop(value) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return Math.round(Number(value)).toLocaleString();
+}
+
+function renderEconomy(options) {
+  const draw = !options || options.charts !== false;
   const sel = document.getElementById("e-country");
   if (!sel) return;
   const c = country(sel.value);
   if (!c) return;
   const rates = jobRates(c);
   const list = withJobRates(filteredEconomyList());
-  const cRated = {
-    ...c,
-    liveRate: rates.liveRate,
-    jobGeneral: rates.jobGeneral
-  };
+  const rated = { ...c, liveRate: rates.liveRate, jobGeneral: rates.jobGeneral };
 
   document.getElementById("e-gdp").textContent =
-    c.gdp == null ? "—" : `USD ${fmtNum(c.gdp, 1)} bn${c.gdpYear ? ` (${c.gdpYear})` : ""}`;
-  document.getElementById("e-growth").textContent =
-    c.growth == null ? "—" : `${c.growth >= 0 ? "+" : ""}${c.growth}%${c.growthYear ? ` (${c.growthYear})` : ""}`;
+    c.gdp == null ? "—" : "USD " + fmtNum(c.gdp, 1) + " bn" + (c.gdpYear ? " (" + c.gdpYear + ")" : "");
+  const growthEl = document.getElementById("e-growth");
+  growthEl.textContent = c.growth == null ? "—" : (c.growth >= 0 ? "+" : "") + c.growth + "%" + (c.growthYear ? " (" + c.growthYear + ")" : "");
+  growthEl.classList.toggle("is-down", c.growth != null && c.growth < 0);
   document.getElementById("e-live-rate").textContent =
-    rates.liveRate == null
-      ? "—"
-      : `${rates.liveRate}%` + (rates.cover != null ? ` · ${rates.cover.toFixed(2)}×` : "");
-  document.getElementById("e-job-general").textContent =
-    rates.jobGeneral == null ? "—" : `${rates.jobGeneral}%`;
-  document.getElementById("e-gross").textContent =
-    c.grossAvg == null ? "—" : salaryRangeText(c.grossLow, c.grossHigh, "USD");
-  document.getElementById("e-net").textContent =
-    c.netAvg == null ? "—" : salaryRangeText(c.netLow, c.netHigh, "USD");
+    rates.liveRate == null ? "—" : rates.liveRate + "%" + (rates.cover != null ? " · " + rates.cover.toFixed(2) + "×" : "");
+  document.getElementById("e-job-general").textContent = rates.jobGeneral == null ? "—" : rates.jobGeneral + "%";
+  document.getElementById("e-unemp").textContent =
+    c.unemp == null ? "—" : fmtNum(c.unemp, 1) + "%" + (c.jobsYear ? " (" + c.jobsYear + ")" : "");
+  document.getElementById("e-pop").textContent =
+    c.pop == null ? "—" : fmtPop(c.pop) + (c.popYear ? " (" + c.popYear + ")" : "");
+  document.getElementById("e-gross").textContent = c.grossAvg == null ? "—" : salaryRangeText(c.grossLow, c.grossHigh, "USD");
+  document.getElementById("e-net").textContent = c.netAvg == null ? "—" : salaryRangeText(c.netLow, c.netHigh, "USD");
 
-  const pickTop = (arr, key, n, include) => {
-    const out = [];
-    const seen = new Set();
-    if (include && include[key] != null) {
-      out.push(include);
-      seen.add(include.code);
-    }
-    for (const row of arr) {
-      if (seen.has(row.code) || row[key] == null) continue;
-      out.push(row);
-      seen.add(row.code);
-      if (out.length >= n) break;
-    }
-    return out.sort((a, b) => (b[key] || 0) - (a[key] || 0));
-  };
+  document.getElementById("e-summary").textContent =
+    c.name + ". Living rate " + (rates.liveRate == null ? "unavailable" : rates.liveRate + " percent") +
+    ". General job " + (rates.jobGeneral == null ? "unavailable" : rates.jobGeneral + " percent") + ".";
 
-  const regionPeers = withJobRates(COUNTRIES.filter((x) => x.region === c.region));
-  drawBarChart("chart-gdp", pickTop(list.slice().sort((a, b) => (b.gdp || 0) - (a.gdp || 0)), "gdp", 8, cRated), "gdp", c.code);
-  drawBarChart("chart-growth", pickTop(list.slice().sort((a, b) => (b.growth || 0) - (a.growth || 0)), "growth", 8, cRated), "growth", c.code);
-  drawBarChart("chart-live-rate", pickTop(regionPeers.slice().sort((a, b) => (b.liveRate || 0) - (a.liveRate || 0)), "liveRate", 10, cRated), "liveRate", c.code);
-  drawBarChart("chart-job-general", pickTop(regionPeers.slice().sort((a, b) => (b.jobGeneral || 0) - (a.jobGeneral || 0)), "jobGeneral", 10, cRated), "jobGeneral", c.code);
-
-  const regionOrder = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
-  const regionGdp = regionOrder.map((r) => ({
-    label: r,
-    value: COUNTRIES.filter((x) => x.region === r && x.gdp != null).reduce((a, x) => a + x.gdp, 0)
-  }));
-  drawDonutChart("chart-region-gdp", regionGdp);
-  drawGroupedSalary("chart-salary", c);
-
-  const tbody = document.querySelector("#e-table tbody");
-  tbody.innerHTML = list
-    .slice()
-    .sort((a, b) => a.region.localeCompare(b.region) || a.name.localeCompare(b.name))
-    .map((row) => `
-    <tr data-code="${row.code}" class="${row.code === c.code ? "on" : ""}">
-      <td>${row.name}</td>
-      <td>${row.region}</td>
-      <td>${row.gdp == null ? "—" : fmtNum(row.gdp, 1)}</td>
-      <td>${row.growth == null ? "—" : `${row.growth >= 0 ? "+" : ""}${row.growth}%`}</td>
-      <td>${row.liveRate == null ? "—" : `${row.liveRate}%`}</td>
-      <td>${row.jobGeneral == null ? "—" : `${row.jobGeneral}%`}</td>
-      <td>${row.grossAvg == null ? "—" : money(row.grossAvg, "USD")}</td>
-      <td>${row.netAvg == null ? "—" : money(row.netAvg, "USD")}</td>
-    </tr>`).join("");
-
-  const note = document.getElementById("e-note");
-  if (note) {
-    const pay = rates.net != null ? rates.net : rates.gross;
-    const coverTxt = rates.living != null
-      ? ` Living budget ≈ ${money(rates.living, "USD")} / mo` +
-        (pay != null ? `; salary ≈ ${money(pay, "USD")}` : "") +
-        (rates.cover != null ? ` (${rates.cover.toFixed(2)}×).` : ".")
-      : "";
-    note.textContent =
-      `Living rate = typical take-home salary vs a decent living budget. ` +
-      `Obtaining a general job = how hard/easy for one person to get any typical job.` +
-      coverTxt;
+  if (draw && !document.getElementById("panel-economy").hidden) {
+    const regionPeers = withJobRates(COUNTRIES.filter((row) => row.region === c.region));
+    document.getElementById("chart-gdp-title").textContent = "Largest economies in this list";
+    document.getElementById("chart-growth-title").textContent = "Fastest GDP growth in this list";
+    document.getElementById("chart-live-title").textContent = "Living rate in " + c.region;
+    document.getElementById("chart-job-title").textContent = "General hiring in " + c.region;
+    document.getElementById("chart-salary-title").textContent = "Gross and net salary in " + c.name;
+    const gdp = (v) => fmtNum(v, v >= 100 ? 0 : 1);
+    const growth = (v) => (v >= 0 ? "+" : "") + fmtNum(v, 1) + "%";
+    const rate = (v) => Math.round(v) + "%";
+    drawRank("chart-gdp", pickTop(list.slice().sort((a, b) => (b.gdp || 0) - (a.gdp || 0)), "gdp", 8, rated), "gdp", c.code, { format: gdp });
+    drawRank("chart-growth", pickTop(list.slice().sort((a, b) => (b.growth || 0) - (a.growth || 0)), "growth", 8, rated), "growth", c.code, { format: growth, signed: true });
+    drawRank("chart-live-rate", pickTop(regionPeers.slice().sort((a, b) => (b.liveRate || 0) - (a.liveRate || 0)), "liveRate", 8, rated), "liveRate", c.code, { format: rate });
+    drawRank("chart-job-general", pickTop(regionPeers.slice().sort((a, b) => (b.jobGeneral || 0) - (a.jobGeneral || 0)), "jobGeneral", 8, rated), "jobGeneral", c.code, { format: rate });
+    const regionOrder = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
+    drawRegionShare(regionOrder.map((region) => ({
+      label: region,
+      value: COUNTRIES.filter((row) => row.region === region && row.gdp != null).reduce((sum, row) => sum + row.gdp, 0)
+    })));
+    drawSalary(c);
   }
+
+  paintTable(list, c.code);
+  const note = document.getElementById("e-note");
+  const pay = rates.net != null ? rates.net : rates.gross;
+  let coverTxt = "";
+  if (rates.living != null) {
+    coverTxt = " A decent one-person month is about " + money(rates.living, "USD") +
+      (pay != null ? ", against a typical salary of " + money(pay, "USD") : "") +
+      (rates.cover != null ? " (" + rates.cover.toFixed(2) + "×)." : ".");
+  }
+  note.textContent =
+    "Living rate compares typical take-home pay with a decent one-person budget. " +
+    "Obtaining a general job describes pressure on ordinary hiring, not a specialty market." +
+    coverTxt;
 }
 
 function setTab(name) {
-  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
-  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("on", p.id === `panel-${name}`));
+  document.querySelectorAll(".tabs button").forEach((button) => {
+    const on = button.dataset.tab === name;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-selected", on ? "true" : "false");
+    button.tabIndex = on ? 0 : -1;
+  });
+  document.querySelectorAll(".panel").forEach((panel) => {
+    const on = panel.id === "panel-" + name;
+    panel.classList.toggle("on", on);
+    panel.hidden = !on;
+  });
   if (name === "economy") requestAnimationFrame(() => renderEconomy());
+  writeUrl();
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, persist) {
   const mode = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", mode);
-  localStorage.setItem("abroadcost-theme", mode);
-  document.querySelectorAll("[data-theme-set]").forEach((btn) => {
-    const on = btn.dataset.themeSet === mode;
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  if (persist) localStorage.setItem("abroadcost-theme", mode);
+  document.querySelectorAll("[data-theme-set]").forEach((button) => {
+    const on = button.dataset.themeSet === mode;
+    button.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", mode === "dark" ? "#0c0f0e" : "#f3eee6");
+}
+
+function knownCountry(code) {
+  return COUNTRIES.some((row) => row.code === code);
+}
+
+function applyUrl() {
+  const params = new URLSearchParams(location.search);
+  const tab = params.get("tab");
+  if (tab === "stay" || tab === "economy" || tab === "monthly") setTab(tab);
+  const countryCode = params.get("c");
+  if (knownCountry(countryCode)) fields["m-country"].set(countryCode, false);
+  const adults = params.get("a");
+  if (adults) document.getElementById("m-adults").value = String(Math.min(10, Math.max(1, parseInt(adults, 10) || 1)));
+  const children = params.get("k");
+  if (children) document.getElementById("m-children").value = String(Math.min(10, Math.max(0, parseInt(children, 10) || 0)));
+  const life = params.get("life");
+  if (life && LIFE_HINT[life]) document.getElementById("m-life").value = life;
+  const cur = params.get("cur");
+  if (cur && FX[cur]) fields["m-currency"].set(cur, false);
+  const vs = params.get("vs");
+  if (vs === "" || vs == null) fields["m-compare"].set("", false);
+  else if (knownCountry(vs)) fields["m-compare"].set(vs, false);
+  const from = params.get("from");
+  if (knownCountry(from)) fields["s-from"].set(from, false);
+  const to = params.get("to");
+  if (knownCountry(to)) fields["s-to"].set(to, false);
+  const purpose = params.get("purpose");
+  if (purpose && PURPOSE_LABEL[purpose]) document.getElementById("s-purpose").value = purpose;
+  const visa = params.get("visa");
+  if (visa && VISA_LABEL[visa]) document.getElementById("s-visa").value = visa;
+  else if (purpose && PURPOSE_LABEL[purpose]) document.getElementById("s-visa").value = suggestVisaForPurpose(purpose);
+  const days = params.get("days");
+  if (days) document.getElementById("s-days").value = String(Math.min(730, Math.max(1, parseInt(days, 10) || 30)));
+  const people = params.get("people");
+  if (people) document.getElementById("s-people").value = String(Math.min(12, Math.max(1, parseInt(people, 10) || 1)));
+  const flight = params.get("flight");
+  if (flight && FLIGHT_LABEL[flight]) document.getElementById("s-flight").value = flight;
+  const papers = params.get("papers");
+  if (papers && PAPERS_USD[papers] != null) document.getElementById("s-papers").value = papers;
+  const slife = params.get("slife");
+  if (slife && LIFE_HINT[slife]) document.getElementById("s-life").value = slife;
+  const scur = params.get("scur");
+  if (scur && FX[scur]) fields["s-currency"].set(scur, false);
+  const econ = params.get("e");
+  if (knownCountry(econ)) fields["e-country"].set(econ, false);
+  const region = params.get("region");
+  if (region && ["All", "Africa", "Americas", "Asia", "Europe", "Oceania"].includes(region)) {
+    document.getElementById("e-region").value = region;
+  }
+  const q = params.get("q");
+  if (q) document.getElementById("e-search").value = q;
+}
+
+function writeUrl() {
+  if (!urlReady) return;
+  clearTimeout(urlTimer);
+  urlTimer = setTimeout(() => {
+    const params = new URLSearchParams();
+    const tab = document.querySelector(".tabs button[aria-selected='true']");
+    if (tab && tab.dataset.tab !== "monthly") params.set("tab", tab.dataset.tab);
+    params.set("c", document.getElementById("m-country").value);
+    params.set("a", document.getElementById("m-adults").value);
+    params.set("k", document.getElementById("m-children").value);
+    params.set("life", document.getElementById("m-life").value);
+    params.set("cur", document.getElementById("m-currency").value);
+    const vs = document.getElementById("m-compare").value;
+    if (vs) params.set("vs", vs);
+    params.set("from", document.getElementById("s-from").value);
+    params.set("to", document.getElementById("s-to").value);
+    params.set("purpose", document.getElementById("s-purpose").value);
+    params.set("visa", document.getElementById("s-visa").value);
+    params.set("days", document.getElementById("s-days").value);
+    params.set("people", document.getElementById("s-people").value);
+    params.set("flight", document.getElementById("s-flight").value);
+    params.set("papers", document.getElementById("s-papers").value);
+    params.set("slife", document.getElementById("s-life").value);
+    params.set("scur", document.getElementById("s-currency").value);
+    params.set("e", document.getElementById("e-country").value);
+    if (document.getElementById("e-region").value !== "All") params.set("region", document.getElementById("e-region").value);
+    const q = document.getElementById("e-search").value.trim();
+    if (q) params.set("q", q);
+    const url = new URL(location.href);
+    const next = params.toString();
+    if (url.search.replace(/^\?/, "") === next) return;
+    url.search = next;
+    history.replaceState(null, "", url);
+  }, 160);
+}
+
+function refreshAll() {
+  renderMonthly();
+  renderStay();
+  if (!document.getElementById("panel-economy").hidden) renderEconomy();
+  writeUrl();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const err = document.getElementById("data-error");
   if (!COUNTRIES.length) {
-    if (err) {
-      err.hidden = false;
-      err.textContent =
-        "Country data failed to load (world_data.js). Hard-refresh the page (Ctrl+F5) or restart the local server.";
-    }
+    err.hidden = false;
+    err.textContent = "Country data did not load. Refresh the page. If you are running this from a file, use a local server so world_data.js can load.";
     return;
   }
-  if (err) err.hidden = true;
+  err.hidden = true;
 
   const saved = localStorage.getItem("abroadcost-theme");
-  applyTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-  document.querySelectorAll("[data-theme-set]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      applyTheme(btn.dataset.themeSet);
-      setTimeout(() => {
-        if (document.getElementById("panel-economy")?.classList.contains("on")) renderEconomy();
-      }, 30);
+  applyTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"), false);
+  const scheme = matchMedia("(prefers-color-scheme: dark)");
+  if (scheme.addEventListener) {
+    scheme.addEventListener("change", (ev) => {
+      if (!localStorage.getItem("abroadcost-theme")) {
+        applyTheme(ev.matches ? "dark" : "light", false);
+        if (!document.getElementById("panel-economy").hidden) requestAnimationFrame(() => renderEconomy());
+      }
+    });
+  }
+  document.querySelectorAll("[data-theme-set]").forEach((button) => {
+    button.addEventListener("click", () => {
+      applyTheme(button.dataset.themeSet, true);
+      if (!document.getElementById("panel-economy").hidden) {
+        requestAnimationFrame(() => requestAnimationFrame(() => renderEconomy()));
+      }
     });
   });
 
-  fillCountrySelect(document.getElementById("m-country"), "RW");
-  fillCountrySelect(document.getElementById("s-from"), "US");
-  fillCountrySelect(document.getElementById("s-to"), "RW");
-  fillCountrySelect(document.getElementById("e-country"), "RW");
-  fillCurrencySelect(document.getElementById("m-currency"), "USD");
-  fillCurrencySelect(document.getElementById("s-currency"), "USD");
+  const countries = countryItems();
+  const currencies = currencyItems();
+  const compareItems = [{ value: "", label: "No comparison", meta: "" }].concat(countries);
+  mountCombo("m-country-q", "m-country", countries, "RW");
+  mountCombo("m-currency-q", "m-currency", currencies, "USD");
+  mountCombo("m-compare-q", "m-compare", compareItems, "");
+  mountCombo("s-from-q", "s-from", countries, "US");
+  mountCombo("s-to-q", "s-to", countries, "RW");
+  mountCombo("s-currency-q", "s-currency", currencies, "USD");
+  mountCombo("e-country-q", "e-country", countries, "RW");
 
-  document.querySelectorAll(".tabs button").forEach((b) => {
-    b.addEventListener("click", () => setTab(b.dataset.tab));
+  if (location.search) applyUrl();
+
+  document.querySelectorAll("form").forEach((form) => {
+    form.addEventListener("submit", (ev) => ev.preventDefault());
   });
 
-  ["e-country", "e-region", "e-search"].forEach((id) => {
+  document.querySelectorAll('input[type="number"]').forEach((el) => {
+    el.addEventListener("wheel", (ev) => {
+      if (document.activeElement === el) ev.preventDefault();
+    }, { passive: false });
+  });
+
+  function bindClamp(id, min, max, fallback) {
     const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", renderEconomy);
-    el.addEventListener("change", renderEconomy);
+    el.addEventListener("blur", () => {
+      let v = Number(el.value);
+      if (!Number.isFinite(v)) v = fallback;
+      el.value = String(Math.min(max, Math.max(min, Math.round(v))));
+      refreshAll();
+    });
+  }
+  bindClamp("m-adults", 1, 10, 1);
+  bindClamp("m-children", 0, 10, 0);
+  bindClamp("s-days", 1, 730, 30);
+  bindClamp("s-people", 1, 12, 1);
+
+  const tabs = document.querySelector(".tabs");
+  tabs.addEventListener("keydown", (ev) => {
+    const buttons = Array.from(tabs.querySelectorAll('[role="tab"]'));
+    const index = buttons.indexOf(document.activeElement);
+    if (index < 0) return;
+    let next = null;
+    if (ev.key === "ArrowRight") next = buttons[(index + 1) % buttons.length];
+    else if (ev.key === "ArrowLeft") next = buttons[(index - 1 + buttons.length) % buttons.length];
+    else if (ev.key === "Home") next = buttons[0];
+    else if (ev.key === "End") next = buttons[buttons.length - 1];
+    if (!next) return;
+    ev.preventDefault();
+    next.focus();
+    setTab(next.dataset.tab);
   });
-  document.querySelector("#e-table")?.addEventListener("click", (ev) => {
-    const tr = ev.target.closest("tr[data-code]");
-    if (!tr) return;
-    document.getElementById("e-country").value = tr.dataset.code;
-    renderEconomy();
-  });
-  window.addEventListener("resize", () => {
-    if (document.getElementById("panel-economy")?.classList.contains("on")) renderEconomy();
+  document.querySelectorAll(".tabs button").forEach((button) => {
+    button.addEventListener("click", () => setTab(button.dataset.tab));
   });
 
-  [
-    "m-country", "m-adults", "m-children", "m-life", "m-currency",
-    "s-from", "s-to", "s-days", "s-people", "s-life", "s-currency",
-    "s-purpose", "s-visa", "s-papers", "s-flight"
-  ].forEach((id) => {
+  ["m-country", "m-adults", "m-children", "m-life", "m-currency", "m-compare"].forEach((id) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", () => { renderMonthly(); renderStay(); });
-    el.addEventListener("change", () => { renderMonthly(); renderStay(); });
+    const handler = () => {
+      if (id === "m-country") {
+        const picked = country(el.value);
+        if (picked && FX[picked.currency]) fields["m-currency"].set(picked.currency, false);
+      }
+      renderMonthly();
+      writeUrl();
+    };
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  });
+
+  ["s-from", "s-to", "s-days", "s-people", "s-life", "s-currency", "s-purpose", "s-visa", "s-papers", "s-flight"].forEach((id) => {
+    const el = document.getElementById(id);
+    const handler = () => {
+      if (id === "s-to") {
+        const picked = country(el.value);
+        if (picked && FX[picked.currency]) fields["s-currency"].set(picked.currency, false);
+      }
+      renderStay();
+      writeUrl();
+    };
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
   });
 
   document.getElementById("s-purpose").addEventListener("change", () => {
     const purpose = document.getElementById("s-purpose").value;
     document.getElementById("s-visa").value = suggestVisaForPurpose(purpose);
     const daysEl = document.getElementById("s-days");
-    if (purpose === "study" && +daysEl.value < 180) daysEl.value = 180;
-    if (purpose === "work" && +daysEl.value < 90) daysEl.value = 90;
-    if (purpose === "visit" && +daysEl.value > 30) daysEl.value = 14;
+    if (purpose === "study" && +daysEl.value < 180) daysEl.value = "180";
+    if (purpose === "work" && +daysEl.value < 90) daysEl.value = "90";
+    if (purpose === "visit" && +daysEl.value > 30) daysEl.value = "14";
     syncPermanentUi(purpose);
     renderStay();
+    writeUrl();
   });
 
-  document.getElementById("s-to").addEventListener("change", () => {
-    const to = country(document.getElementById("s-to").value);
-    if (to && FX[to.currency]) document.getElementById("s-currency").value = to.currency;
+  document.getElementById("s-swap").addEventListener("click", () => {
+    const from = document.getElementById("s-from").value;
+    const to = document.getElementById("s-to").value;
+    fields["s-from"].set(to, false);
+    fields["s-to"].set(from, false);
+    const dest = country(document.getElementById("s-to").value);
+    if (dest && FX[dest.currency]) fields["s-currency"].set(dest.currency, false);
     renderStay();
-  });
-  document.getElementById("m-country").addEventListener("change", () => {
-    const c = country(document.getElementById("m-country").value);
-    if (c && FX[c.currency]) document.getElementById("m-currency").value = c.currency;
-    renderMonthly();
+    writeUrl();
   });
 
-  const foot = document.getElementById("site-foot");
-  if (foot) {
-    foot.textContent = `${COUNTRIES.length} countries.`;
+  document.getElementById("e-country").addEventListener("change", () => {
+    renderEconomy();
+    writeUrl();
+  });
+  document.getElementById("e-region").addEventListener("change", () => {
+    renderEconomy();
+    writeUrl();
+  });
+  let searchTimer = 0;
+  document.getElementById("e-search").addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      renderEconomy();
+      writeUrl();
+    }, 90);
+  });
+
+  document.querySelector("#e-table").addEventListener("click", (ev) => {
+    const sortBtn = ev.target.closest("[data-sort]");
+    if (sortBtn) {
+      const key = sortBtn.dataset.sort;
+      const numeric = ["gdp", "growth", "liveRate", "jobGeneral", "grossAvg", "netAvg"].includes(key);
+      if (tableSort.key === key) tableSort.dir *= -1;
+      else {
+        tableSort.key = key;
+        tableSort.dir = numeric ? -1 : 1;
+      }
+      renderEconomy({ charts: false });
+      return;
+    }
+    const tr = ev.target.closest("tr[data-code]");
+    if (!tr) return;
+    const y = window.scrollY;
+    fields["e-country"].set(tr.dataset.code, true);
+    window.scrollTo(0, y);
+  });
+
+  const charts = document.querySelector(".charts");
+  if (window.ResizeObserver && charts) {
+    let resizeTimer = 0;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!document.getElementById("panel-economy").hidden) renderEconomy();
+      }, 120);
+    });
+    observer.observe(charts);
+  } else {
+    window.addEventListener("resize", () => {
+      if (!document.getElementById("panel-economy").hidden) renderEconomy();
+    });
   }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      if (!document.getElementById("panel-economy").hidden) renderEconomy();
+    });
+  }
+
+  const count = document.getElementById("country-count");
+  if (count) count.textContent = String(COUNTRIES.length);
+  const source = document.getElementById("source-line");
+  if (source) source.textContent = sourceFootnote();
 
   renderMonthly();
   renderStay();
+  urlReady = true;
+  if (location.search) writeUrl();
 });

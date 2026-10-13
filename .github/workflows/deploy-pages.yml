@@ -23,8 +23,10 @@ jobs:
 
       - name: Assemble Pages site
         run: |
-          mkdir -p _site
+          mkdir -p _site/fonts
           cp index.html relo.css relo.js world_data.js _site/
+          cp favicon.svg robots.txt sitemap.xml 404.html og.png apple-touch.png paper.png _site/
+          cp fonts/*.woff2 fonts/OFL.txt _site/fonts/
           cp .nojekyll _site/
           # Keep docs off the public root; site is the product surface
 
