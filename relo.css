@@ -274,25 +274,69 @@ html[data-theme="dark"] body::before { opacity: 0.18; }
   color: var(--accent-ink);
 }
 
-/* —— Hero —— */
+/* —— Hero (full-bleed plane) —— */
 .hero {
+  --arn-accent: var(--accent);
+  --arn-accent-2: var(--sand);
   position: relative;
   z-index: 1;
+  isolation: isolate;
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
   gap: clamp(1.5rem, 4vw, 3rem);
-  min-height: min(88dvh, 52rem);
-  width: min(72rem, calc(100% - clamp(1.25rem, 4vw, 4rem)));
+  min-height: 100svh;
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0;
+  padding:
+    clamp(1.5rem, 4vw, 3rem)
+    max(clamp(1.25rem, 4vw, 4rem), env(safe-area-inset-right))
+    clamp(2.5rem, 6vw, 4.5rem)
+    max(clamp(1.25rem, 4vw, 4rem), env(safe-area-inset-left));
+  overflow: hidden;
+}
+.hero > * {
+  width: min(72rem, 100%);
   margin-inline: auto;
-  padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+}
+.hero-copy,
+.hero-visual {
+  width: 100%;
+  max-width: min(36rem, 100%);
+  justify-self: center;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(120% 80% at 88% 8%, color-mix(in srgb, var(--mint) 28%, transparent), transparent 55%),
+    radial-gradient(90% 70% at 8% 92%, color-mix(in srgb, var(--sand) 18%, transparent), transparent 50%),
+    linear-gradient(165deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.22;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
 }
 
 @media (min-width: 900px) {
   .hero {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
     gap: 2.5rem;
+    padding-inline: max(clamp(2rem, 6vw, 5rem), env(safe-area-inset-left))
+      max(clamp(2rem, 6vw, 5rem), env(safe-area-inset-right));
   }
+  .hero > * { width: 100%; max-width: none; }
+  .hero-copy { justify-self: start; max-width: 34rem; }
+  .hero-visual { justify-self: end; max-width: 28rem; }
 }
 
 .hero-copy { max-width: 34rem; }
@@ -424,6 +468,7 @@ html[data-theme="dark"] body::before { opacity: 0.18; }
   .btn:hover { transform: none; }
   .reveal { opacity: 1 !important; transform: none !important; }
   .big.tick { animation: none; }
+  .panel.on { animation: none; }
 }
 
 .reveal {
@@ -449,12 +494,13 @@ html[data-theme="dark"] body::before { opacity: 0.18; }
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
-  margin: 0 0 0;
+  margin: 0;
   padding: 0.35rem;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   border: 1px solid var(--line);
   border-radius: 0.75rem 0.75rem 0 0;
   border-bottom: 0;
+  backdrop-filter: blur(12px);
 }
 
 .tabs button {
@@ -491,6 +537,11 @@ html[data-theme="dark"] body::before { opacity: 0.18; }
   border-radius: 0 0 0.85rem 0.85rem;
   box-shadow: var(--shadow);
   padding: clamp(1.35rem, 2.8vw, 2.5rem);
+  animation: panel-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 .screen-pane {
@@ -1103,6 +1154,19 @@ html[data-theme="dark"] select {
   .fx-pill { display: none; }
   .brand-mark { font-size: clamp(2.35rem, 12vw, 3.4rem); }
   .stat.wide { grid-column: span 2; }
+  .tabs {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 18;
+    border-radius: 0;
+    margin-inline: calc(-1 * clamp(0.65rem, 3vw, 1rem));
+    width: calc(100% + 2 * clamp(0.65rem, 3vw, 1rem));
+    box-shadow: 0 10px 28px -18px rgba(11, 28, 34, 0.45);
+  }
+  .app-shell {
+    width: min(100%, calc(100% - clamp(1rem, 4vw, 1.5rem)));
+  }
+  .panel.on { border-radius: 0 0 0.75rem 0.75rem; }
 }
 
 @media (max-width: 380px) {

@@ -17,7 +17,18 @@ venv/
 # Env / secrets
 .env
 .env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 credentials.json
+**/secrets/**
+.secret
+*_secret*
+id_rsa
+id_ed25519
+service-account*.json
 secrets/
 
 # Cursor / local agent tooling — never publish
