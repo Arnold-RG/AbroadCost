@@ -96,3 +96,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 Outfit
 Copyright 2021 The Outfit Project Authors (https://github.com/Outfitio/Outfit-Fonts)
 Licensed under the SIL Open Font License, Version 1.1.
+
+----
+Syne
+Copyright 2019–2021 The Syne Project Authors (https://gitlab.com/bonjour-monde/fonderie/syne-typeface)
+Licensed under the SIL Open Font License, Version 1.1.
+
+----
+DM Sans
+Copyright 2014–2023 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
+Licensed under the SIL Open Font License, Version 1.1.

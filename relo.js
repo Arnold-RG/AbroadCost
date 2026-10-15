@@ -1,9 +1,16 @@
 const COUNTRIES = window.RELO_COUNTRIES || [];
 const CURRENCIES = window.RELO_CURRENCIES || [];
 const DATA_SOURCE = window.RELO_DATA_SOURCE || {};
-const FX_SOURCE = window.RELO_FX_SOURCE || {};
+let FX_SOURCE = Object.assign({}, window.RELO_FX_SOURCE || {});
 const SALARY_SOURCE = window.RELO_SALARY_SOURCE || {};
-const FX = Object.fromEntries(CURRENCIES.map((c) => [c.code, Number(c.usd) || 1]));
+/** USD-per-unit rates; seeded from world_data.js, optionally refreshed via Frankfurter. */
+let FX = Object.fromEntries(CURRENCIES.map((c) => [c.code, Number(c.usd) || 1]));
+FX.USD = 1;
+
+const CHART_FONT = '400 12.5px "DM Sans", sans-serif';
+const CHART_FONT_SM = '400 12px "DM Sans", sans-serif';
+const CHART_FONT_MSG = '400 13px "DM Sans", sans-serif';
+const chartAnim = Object.create(null);
 
 /**
  * Mid-tier USA monthly basket for one adult (comfortable, not a high lifestyle).
@@ -303,9 +310,67 @@ function suggestVisaForPurpose(purpose) {
 function sourceFootnote() {
   const wb = DATA_SOURCE.provider || "World Bank WDI";
   const fx = FX_SOURCE.date
-    ? `FX: ${FX_SOURCE.provider || "open.er-api.com"} (${FX_SOURCE.date})`
-    : "FX: open.er-api.com";
-  return `${wb}. ${fx}.`;
+    ? `FX: ${FX_SOURCE.provider || "bundled rates"} (${FX_SOURCE.date})`
+    : "FX: bundled rates from world_data.js";
+  return `${wb}. ${fx}. Salaries: ${SALARY_SOURCE.provider || "ILOSTAT / OECD / World Bank"}.`;
+}
+
+function setFxStatus(text) {
+  const el = document.getElementById("fx-status");
+  if (!el) return;
+  if (!text) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+}
+
+/**
+ * Optional live FX from Frankfurter (ECB, CORS-safe). Falls back silently to bundled rates.
+ * Frankfurter returns units-per-USD; we store USD-per-unit to match world_data.js.
+ */
+async function refreshFxLive() {
+  if (!CURRENCIES.length) return false;
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 4500) : 0;
+  try {
+    const res = await fetch("https://api.frankfurter.app/latest?from=USD", {
+      signal: ctrl ? ctrl.signal : undefined,
+      referrerPolicy: "strict-origin-when-cross-origin"
+    });
+    if (!res.ok) throw new Error("fx http " + res.status);
+    const data = await res.json();
+    const rates = data && data.rates;
+    if (!rates || typeof rates !== "object") throw new Error("fx shape");
+    let updated = 0;
+    for (const code of Object.keys(FX)) {
+      if (code === "USD") continue;
+      const perUsd = Number(rates[code]);
+      if (perUsd > 0) {
+        FX[code] = 1 / perUsd;
+        updated += 1;
+      }
+    }
+    FX.USD = 1;
+    FX_SOURCE = {
+      provider: "api.frankfurter.app (ECB)",
+      base: "USD",
+      date: data.date || new Date().toISOString().slice(0, 10),
+      pairs: updated,
+      live: true
+    };
+    setFxStatus("Live FX · " + (FX_SOURCE.date || "today"));
+    const source = document.getElementById("source-line");
+    if (source) source.textContent = sourceFootnote();
+    return updated > 0;
+  } catch (_) {
+    setFxStatus("Bundled FX");
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function salaryRangeText(low, high, cur) {
@@ -961,8 +1026,8 @@ function drawRank(canvasId, items, valueKey, highlight, opts) {
   if (!rows.length) {
     const prep = prepCanvas(canvasId, 64);
     if (prep) {
-      prep.ctx.fillStyle = cssVar("--muted", "#5c564c");
-      prep.ctx.font = "400 13px Outfit, sans-serif";
+      prep.ctx.fillStyle = cssVar("--muted", "#4a6068");
+      prep.ctx.font = CHART_FONT_MSG;
       prep.ctx.textBaseline = "top";
       prep.ctx.fillText("Nothing to plot for this selection.", 2, 16);
     }
@@ -974,11 +1039,11 @@ function drawRank(canvasId, items, valueKey, highlight, opts) {
   if (!prep) return;
   const ctx = prep.ctx;
   const w = prep.w;
-  const ink = cssVar("--ink", "#1b1916");
-  const muted = cssVar("--muted", "#5c564c");
-  const hi = cssVar("--bar-hi", "#16382e");
-  const bar = cssVar("--bar-muted", "#c4b49a");
-  const line = cssVar("--line", "#e4dccf");
+  const ink = cssVar("--ink", "#0b1c22");
+  const muted = cssVar("--muted", "#4a6068");
+  const hi = cssVar("--bar-hi", "#0d5c63");
+  const bar = cssVar("--bar-muted", "#8aa0a8");
+  const line = cssVar("--line", "#c5d2d8");
   const vals = rows.map((row) => Number(row[valueKey]));
   let min = signed ? Math.min(0, ...vals) : 0;
   let max = Math.max(0, ...vals);
@@ -989,33 +1054,48 @@ function drawRank(canvasId, items, valueKey, highlight, opts) {
   const plotW = Math.max(24, w - x0 - valueW);
   const span = max - min;
   const zeroX = x0 + ((0 - min) / span) * plotW;
-  ctx.font = "400 12.5px Outfit, sans-serif";
-  ctx.textBaseline = "middle";
-  rows.forEach((item, i) => {
-    const v = Number(item[valueKey]);
-    const y = 8 + i * 28;
-    const selected = item.code === highlight;
-    ctx.fillStyle = selected ? ink : muted;
-    ctx.textAlign = "left";
-    const label = item.name || item.code || "";
-    ctx.fillText(fitText(ctx, label, labelW), 0, y + 8);
-    const x1 = x0 + ((v - min) / span) * plotW;
-    const left = Math.min(zeroX, x1);
-    const width = Math.max(1.5, Math.abs(x1 - zeroX));
-    ctx.fillStyle = selected ? hi : bar;
-    ctx.fillRect(left, y + 2, width, 11);
-    ctx.fillStyle = ink;
-    ctx.textAlign = "right";
-    ctx.fillText(format(v), w - 1, y + 8);
-  });
-  if (signed && min < 0) {
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(zeroX, 4);
-    ctx.lineTo(zeroX, height - 4);
-    ctx.stroke();
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (chartAnim[canvasId]) cancelAnimationFrame(chartAnim[canvasId]);
+  const start = performance.now();
+  const dur = reduce ? 0 : 520;
+
+  function frame(now) {
+    const t = dur <= 0 ? 1 : Math.min(1, (now - start) / dur);
+    const ease = 1 - Math.pow(1 - t, 3);
+    ctx.clearRect(0, 0, w, height);
+    ctx.font = CHART_FONT;
+    ctx.textBaseline = "middle";
+    rows.forEach((item, i) => {
+      const v = Number(item[valueKey]);
+      const y = 8 + i * 28;
+      const selected = item.code === highlight;
+      ctx.fillStyle = selected ? ink : muted;
+      ctx.textAlign = "left";
+      const label = item.name || item.code || "";
+      ctx.fillText(fitText(ctx, label, labelW), 0, y + 8);
+      const x1 = x0 + ((v - min) / span) * plotW;
+      const left = Math.min(zeroX, x1);
+      const fullW = Math.max(1.5, Math.abs(x1 - zeroX));
+      const width = Math.max(1.5, fullW * ease);
+      const drawLeft = x1 < zeroX ? zeroX - width : left;
+      ctx.fillStyle = selected ? hi : bar;
+      ctx.fillRect(drawLeft, y + 2, width, 11);
+      ctx.fillStyle = ink;
+      ctx.textAlign = "right";
+      ctx.fillText(format(v), w - 1, y + 8);
+    });
+    if (signed && min < 0) {
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(zeroX, 4);
+      ctx.lineTo(zeroX, height - 4);
+      ctx.stroke();
+    }
+    if (t < 1) chartAnim[canvasId] = requestAnimationFrame(frame);
+    else chartAnim[canvasId] = 0;
   }
+  chartAnim[canvasId] = requestAnimationFrame(frame);
   if (sum) {
     sum.textContent = rows.map((row) => (row.name || row.code) + ": " + format(Number(row[valueKey]))).join(". ") + ".";
   }
@@ -1049,8 +1129,8 @@ function drawSalary(countryRow) {
   if (!countryRow || countryRow.grossAvg == null) {
     const prep = prepCanvas("chart-salary", 64);
     if (prep) {
-      prep.ctx.fillStyle = cssVar("--muted", "#5c564c");
-      prep.ctx.font = "400 13px Outfit, sans-serif";
+      prep.ctx.fillStyle = cssVar("--muted", "#4a6068");
+      prep.ctx.font = CHART_FONT_MSG;
       prep.ctx.textBaseline = "top";
       prep.ctx.fillText("No salary series for this country.", 2, 16);
     }
@@ -1062,10 +1142,10 @@ function drawSalary(countryRow) {
   const ctx = prep.ctx;
   const w = prep.w;
   const h = prep.h;
-  const ink = cssVar("--ink", "#1b1916");
-  const gross = cssVar("--bar-hi", "#16382e");
-  const net = cssVar("--bar-muted", "#c4b49a");
-  const line = cssVar("--line", "#e4dccf");
+  const ink = cssVar("--ink", "#0b1c22");
+  const gross = cssVar("--bar-hi", "#0d5c63");
+  const net = cssVar("--bar-muted", "#8aa0a8");
+  const line = cssVar("--line", "#c5d2d8");
   const pairs = [
     { label: "Low", g: countryRow.grossLow, n: countryRow.netLow },
     { label: "Average", g: countryRow.grossAvg, n: countryRow.netAvg },
@@ -1077,26 +1157,39 @@ function drawSalary(countryRow) {
   const padT = 12;
   const plotH = h - padT - padB;
   const groupW = (w - padL) / pairs.length;
-  ctx.strokeStyle = line;
-  ctx.beginPath();
-  ctx.moveTo(padL, padT + plotH);
-  ctx.lineTo(w - 4, padT + plotH);
-  ctx.stroke();
-  ctx.font = "400 12px Outfit, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-  pairs.forEach((pair, i) => {
-    const bw = Math.min(28, groupW * 0.22);
-    const x = padL + i * groupW + groupW * 0.5 - bw - 4;
-    const gh = ((pair.g || 0) / max) * (plotH - 4);
-    const nh = ((pair.n || 0) / max) * (plotH - 4);
-    ctx.fillStyle = gross;
-    ctx.fillRect(x, padT + plotH - gh, bw, gh);
-    ctx.fillStyle = net;
-    ctx.fillRect(x + bw + 8, padT + plotH - nh, bw, nh);
-    ctx.fillStyle = ink;
-    ctx.fillText(pair.label, padL + i * groupW + groupW * 0.5, h - 8);
-  });
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (chartAnim["chart-salary"]) cancelAnimationFrame(chartAnim["chart-salary"]);
+  const start = performance.now();
+  const dur = reduce ? 0 : 480;
+
+  function frame(now) {
+    const t = dur <= 0 ? 1 : Math.min(1, (now - start) / dur);
+    const ease = 1 - Math.pow(1 - t, 3);
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = line;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT + plotH);
+    ctx.lineTo(w - 4, padT + plotH);
+    ctx.stroke();
+    ctx.font = CHART_FONT_SM;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    pairs.forEach((pair, i) => {
+      const bw = Math.min(28, groupW * 0.22);
+      const x = padL + i * groupW + groupW * 0.5 - bw - 4;
+      const gh = ((pair.g || 0) / max) * (plotH - 4) * ease;
+      const nh = ((pair.n || 0) / max) * (plotH - 4) * ease;
+      ctx.fillStyle = gross;
+      ctx.fillRect(x, padT + plotH - gh, bw, gh);
+      ctx.fillStyle = net;
+      ctx.fillRect(x + bw + 8, padT + plotH - nh, bw, nh);
+      ctx.fillStyle = ink;
+      ctx.fillText(pair.label, padL + i * groupW + groupW * 0.5, h - 8);
+    });
+    if (t < 1) chartAnim["chart-salary"] = requestAnimationFrame(frame);
+    else chartAnim["chart-salary"] = 0;
+  }
+  chartAnim["chart-salary"] = requestAnimationFrame(frame);
   if (sum) {
     sum.textContent = pairs.map((pair) =>
       pair.label + " gross " + money(pair.g, "USD") + ", net " + money(pair.n, "USD")
@@ -1298,7 +1391,24 @@ function applyTheme(theme, persist) {
     button.setAttribute("aria-pressed", on ? "true" : "false");
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", mode === "dark" ? "#0c0f0e" : "#f3eee6");
+  if (meta) meta.setAttribute("content", mode === "dark" ? "#071316" : "#0d5c63");
+}
+
+function bindReveals() {
+  const nodes = document.querySelectorAll(".reveal");
+  if (!nodes.length) return;
+  if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    nodes.forEach((el) => el.classList.add("is-in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-in");
+      io.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+  nodes.forEach((el) => io.observe(el));
 }
 
 function knownCountry(code) {
@@ -1595,6 +1705,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (count) count.textContent = String(COUNTRIES.length);
   const source = document.getElementById("source-line");
   if (source) source.textContent = sourceFootnote();
+
+  document.querySelectorAll("[data-tab-jump]").forEach((link) => {
+    link.addEventListener("click", (ev) => {
+      const tab = link.getAttribute("data-tab-jump");
+      if (!tab) return;
+      ev.preventDefault();
+      setTab(tab);
+      const target = document.getElementById("planner");
+      if (target) target.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+  });
+
+  bindReveals();
+  setFxStatus("Bundled FX");
+  refreshFxLive().then((ok) => {
+    if (ok) refreshAll();
+  });
 
   renderMonthly();
   renderStay();

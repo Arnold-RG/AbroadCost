@@ -6,9 +6,10 @@
   <title>AbroadCost — Country budget planner</title>
   <meta name="description" content="Compare monthly living costs, salaries, and travel budgets for 195 countries. Planning estimates from World Bank price levels, not a quote.">
   <link rel="canonical" href="https://arnold-rg.github.io/AbroadCost/">
-  <meta name="theme-color" content="#f3eee6">
+  <meta name="theme-color" content="#0d5c63">
   <meta name="color-scheme" content="light dark">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.frankfurter.app; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="AbroadCost">
   <meta property="og:url" content="https://arnold-rg.github.io/AbroadCost/">
@@ -26,8 +27,8 @@
   <meta name="twitter:image:alt" content="AbroadCost, a country budget planner covering 195 countries.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch.png">
-  <link rel="preload" href="fonts/cormorant-500.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/outfit-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/syne-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/dm-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="relo.css">
   <script type="application/ld+json">
   {
@@ -49,33 +50,73 @@
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute("content", theme === "dark" ? "#0c0f0e" : "#f3eee6");
+      if (meta) meta.setAttribute("content", theme === "dark" ? "#071316" : "#0d5c63");
     })();
   </script>
 </head>
 <body>
-  <a class="skip" href="#main">Skip to planner</a>
-  <div class="wrap">
-    <header class="mast">
-      <div class="mast-bar">
-        <div class="mast-id">
-          <p class="brand">AbroadCost</p>
-          <p class="byline">Country budget planner</p>
-        </div>
-        <div class="theme-switch" role="group" aria-label="Color theme">
-          <button type="button" id="theme-light" data-theme-set="light" aria-pressed="true">Light</button>
-          <button type="button" id="theme-dark" data-theme-set="dark" aria-pressed="false">Dark</button>
-        </div>
+  <a class="skip" href="#planner">Skip to planner</a>
+
+  <header class="topbar">
+    <a class="topbar-brand" href="#top" id="top">AbroadCost</a>
+    <div class="topbar-actions">
+      <span class="fx-pill" id="fx-status" hidden aria-live="polite"></span>
+      <div class="theme-switch" role="group" aria-label="Color theme">
+        <button type="button" id="theme-light" data-theme-set="light" aria-pressed="true">Light</button>
+        <button type="button" id="theme-dark" data-theme-set="dark" aria-pressed="false">Dark</button>
       </div>
-      <h1>Plan a month, a trip, or a move.</h1>
-      <span class="rule" aria-hidden="true"></span>
-      <p class="intro">
-        Monthly living costs, travel budgets, and salaries for 195 countries,
-        across Africa, the Americas, Asia, Europe, and Oceania. The figures are
-        modeled so you can compare places. They are not a quote, and they are not advice.
-      </p>
-      <p class="error" id="data-error" role="alert" hidden></p>
-    </header>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy reveal">
+      <p class="brand-mark">AbroadCost</p>
+      <h1 id="hero-title">See what a month abroad really costs.</h1>
+      <p class="hero-support">Living budgets, travel totals, and salaries across 195 countries — modeled for comparison, not a quote.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#planner">Open planner</a>
+        <a class="btn btn-ghost" href="#panel-economy" data-tab-jump="economy">Explore economies</a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="globe-orb">
+        <svg class="globe-svg" viewBox="0 0 420 420" role="img">
+          <defs>
+            <radialGradient id="globe-fill" cx="38%" cy="32%" r="68%">
+              <stop offset="0%" stop-color="var(--globe-hi)"/>
+              <stop offset="55%" stop-color="var(--globe-mid)"/>
+              <stop offset="100%" stop-color="var(--globe-lo)"/>
+            </radialGradient>
+            <linearGradient id="globe-sheen" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="var(--sand)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </linearGradient>
+          </defs>
+          <circle class="globe-disk" cx="210" cy="210" r="168" fill="url(#globe-fill)"/>
+          <g class="globe-grid" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.38">
+            <ellipse cx="210" cy="210" rx="168" ry="168"/>
+            <ellipse cx="210" cy="210" rx="118" ry="168"/>
+            <ellipse cx="210" cy="210" rx="58" ry="168"/>
+            <ellipse cx="210" cy="210" rx="168" ry="58"/>
+            <ellipse cx="210" cy="210" rx="168" ry="118"/>
+            <path d="M42 210h336M210 42v336"/>
+          </g>
+          <g class="globe-dots" fill="var(--sand)">
+            <circle cx="148" cy="132" r="3.2"/><circle cx="246" cy="118" r="2.4"/>
+            <circle cx="292" cy="188" r="3"/><circle cx="176" cy="236" r="2.6"/>
+            <circle cx="124" cy="278" r="2.2"/><circle cx="268" cy="286" r="3.1"/>
+            <circle cx="214" cy="164" r="2.1"/><circle cx="318" cy="248" r="2.3"/>
+          </g>
+          <circle cx="210" cy="210" r="168" fill="url(#globe-sheen)"/>
+          <ellipse class="globe-orbit" cx="210" cy="210" rx="198" ry="72" fill="none" stroke="var(--sand)" stroke-width="1" opacity="0.45"/>
+        </svg>
+        <div class="globe-glow"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="app-shell" id="planner">
+    <p class="error" id="data-error" role="alert" hidden></p>
 
     <nav class="tabs" role="tablist" aria-label="Planner">
       <button type="button" role="tab" id="tab-monthly" class="on" data-tab="monthly" aria-selected="true" aria-controls="panel-monthly" aria-label="Monthly living" tabindex="0"><span class="tab-long">Monthly living</span><span class="tab-short">Monthly</span></button>
@@ -84,7 +125,7 @@
     </nav>
 
     <main id="main">
-      <section class="panel on" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
+      <section class="panel on screen" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
         <div class="panel-copy">
           <h2>Monthly living budget</h2>
           <p class="hint">
@@ -94,11 +135,11 @@
           </p>
         </div>
         <div class="layout">
-          <form class="form" id="form-monthly">
+          <form class="form screen-pane" id="form-monthly">
             <div class="field combo full">
               <label for="m-country-q">Country</label>
               <div class="combo-control">
-                <input id="m-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" aria-required="true">
+                <input id="m-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="80" aria-required="true">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="m-country-list" class="combo-list" role="listbox" aria-label="Countries" hidden></ul>
@@ -107,11 +148,11 @@
             <div class="pair full">
               <div class="field">
                 <label for="m-adults">Adults</label>
-                <input id="m-adults" type="number" inputmode="numeric" min="1" max="10" value="1">
+                <input id="m-adults" type="number" inputmode="numeric" min="1" max="10" value="1" maxlength="2">
               </div>
               <div class="field">
                 <label for="m-children">Children</label>
-                <input id="m-children" type="number" inputmode="numeric" min="0" max="10" value="0">
+                <input id="m-children" type="number" inputmode="numeric" min="0" max="10" value="0" maxlength="2">
               </div>
             </div>
             <div class="field">
@@ -127,7 +168,7 @@
             <div class="field combo">
               <label for="m-currency-q">Show in</label>
               <div class="combo-control">
-                <input id="m-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input id="m-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="40">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="m-currency-list" class="combo-list" role="listbox" aria-label="Currencies" hidden></ul>
@@ -136,7 +177,7 @@
             <div class="field combo full">
               <label for="m-compare-q">Compare with</label>
               <div class="combo-control">
-                <input id="m-compare-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-compare-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input id="m-compare-q" type="text" role="combobox" aria-expanded="false" aria-controls="m-compare-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="80">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="m-compare-list" class="combo-list" role="listbox" aria-label="Comparison country" hidden></ul>
@@ -144,7 +185,7 @@
             </div>
           </form>
 
-          <div class="result">
+          <div class="result screen-pane">
             <div class="figure" aria-live="polite">
               <p class="eyebrow">Estimated monthly total</p>
               <p class="big" id="m-total">—</p>
@@ -179,7 +220,7 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-stay" role="tabpanel" aria-labelledby="tab-stay" hidden>
+      <section class="panel screen" id="panel-stay" role="tabpanel" aria-labelledby="tab-stay" hidden>
         <div class="panel-copy">
           <h2>Traveling budget</h2>
           <p class="hint">
@@ -189,11 +230,11 @@
           </p>
         </div>
         <div class="layout">
-          <form class="form" id="form-stay">
+          <form class="form screen-pane" id="form-stay">
             <div class="field combo">
               <label for="s-from-q">Leaving from</label>
               <div class="combo-control">
-                <input id="s-from-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-from-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input id="s-from-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-from-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="80">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="s-from-list" class="combo-list" role="listbox" aria-label="Origin countries" hidden></ul>
@@ -202,7 +243,7 @@
             <div class="field combo">
               <label for="s-to-q">Going to</label>
               <div class="combo-control">
-                <input id="s-to-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-to-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input id="s-to-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-to-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="80">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="s-to-list" class="combo-list" role="listbox" aria-label="Destination countries" hidden></ul>
@@ -240,11 +281,11 @@
             <div class="pair full">
               <div class="field" id="s-days-wrap">
                 <label for="s-days">Days staying</label>
-                <input id="s-days" type="number" inputmode="numeric" min="1" max="730" value="30">
+                <input id="s-days" type="number" inputmode="numeric" min="1" max="730" value="30" maxlength="3">
               </div>
               <div class="field">
                 <label for="s-people">People</label>
-                <input id="s-people" type="number" inputmode="numeric" min="1" max="12" value="1">
+                <input id="s-people" type="number" inputmode="numeric" min="1" max="12" value="1" maxlength="2">
               </div>
             </div>
             <div class="field">
@@ -279,7 +320,7 @@
             <div class="field combo">
               <label for="s-currency-q">Show in</label>
               <div class="combo-control">
-                <input id="s-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input id="s-currency-q" type="text" role="combobox" aria-expanded="false" aria-controls="s-currency-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="40">
                 <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </div>
               <ul id="s-currency-list" class="combo-list" role="listbox" aria-label="Currencies" hidden></ul>
@@ -287,7 +328,7 @@
             </div>
           </form>
 
-          <div class="result">
+          <div class="result screen-pane">
             <div class="figure" aria-live="polite">
               <p class="eyebrow" id="s-result-label">Estimated traveling budget</p>
               <p class="route" id="s-route"></p>
@@ -302,7 +343,7 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-economy" role="tabpanel" aria-labelledby="tab-economy" hidden>
+      <section class="panel screen" id="panel-economy" role="tabpanel" aria-labelledby="tab-economy" hidden>
         <div class="panel-copy">
           <h2>Economy, jobs, and salaries</h2>
           <p class="hint">
@@ -311,11 +352,11 @@
             on ordinary hiring.
           </p>
         </div>
-        <div class="filters">
+        <div class="filters screen-pane">
           <div class="field combo">
             <label for="e-country-q">Country</label>
             <div class="combo-control">
-              <input id="e-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="e-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off">
+              <input id="e-country-q" type="text" role="combobox" aria-expanded="false" aria-controls="e-country-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="80">
               <svg class="chevron" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             </div>
             <ul id="e-country-list" class="combo-list" role="listbox" aria-label="Countries" hidden></ul>
@@ -334,7 +375,7 @@
           </div>
           <div class="field">
             <label for="e-search">Search the table</label>
-            <input id="e-search" type="search" placeholder="Name or code" autocomplete="off" aria-controls="e-table">
+            <input id="e-search" type="search" placeholder="Name or code" autocomplete="off" maxlength="80" aria-controls="e-table">
           </div>
         </div>
 
@@ -377,32 +418,32 @@
         </div>
 
         <div class="charts">
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-gdp-title">Largest economies</h3>
             <canvas id="chart-gdp" aria-hidden="true"></canvas>
             <p class="sr-only" id="chart-gdp-sum"></p>
           </div>
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-growth-title">Fastest growth</h3>
             <canvas id="chart-growth" aria-hidden="true"></canvas>
             <p class="sr-only" id="chart-growth-sum"></p>
           </div>
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-live-title">Living rate</h3>
             <canvas id="chart-live-rate" aria-hidden="true"></canvas>
             <p class="sr-only" id="chart-live-rate-sum"></p>
           </div>
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-job-title">General hiring</h3>
             <canvas id="chart-job-general" aria-hidden="true"></canvas>
             <p class="sr-only" id="chart-job-general-sum"></p>
           </div>
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-region-title">Share of listed GDP by region</h3>
             <canvas id="chart-region-gdp" aria-hidden="true"></canvas>
             <ul class="legend" id="region-legend"></ul>
           </div>
-          <div class="chart-box">
+          <div class="chart-box reveal">
             <h3 id="chart-salary-title">Gross and net salary</h3>
             <p class="chart-key"><i data-k="gross"></i> Gross <i data-k="net"></i> Net</p>
             <canvas id="chart-salary" aria-hidden="true"></canvas>
@@ -411,7 +452,7 @@
         </div>
         <p class="quiet chart-note">The marked bar is the country you selected. GDP and growth use the filtered list. Living rate and hiring use that country’s region.</p>
 
-        <div class="table-wrap">
+        <div class="table-wrap screen-pane">
           <table class="data-table" id="e-table">
             <caption>
               <span id="e-count">Countries</span>
@@ -435,43 +476,45 @@
         <p class="quiet" id="e-note"></p>
       </section>
     </main>
-
-    <footer id="site-foot">
-      <p class="foot-brand"><span id="country-count">195</span> countries · Arnova Group</p>
-      <p>Planning estimates, not a quote and not financial advice. Price levels, wages, and visa fees change, and cities inside a country can differ widely.</p>
-      <details class="method">
-        <summary>How the numbers are made</summary>
-        <p>
-          Cost of living is a price level against the United States: the World Bank PPP
-          conversion factor divided by the official exchange rate, held inside a planning
-          band when dual exchange rates would distort it. The monthly budget starts from a
-          mid-tier US basket, then scales by that price level, the lifestyle you pick, and
-          household size. Another adult counts as about two-thirds of a basket, a child
-          about two-fifths, and housing grows more slowly than the rest.
-        </p>
-        <p>
-          Travel uses daily lodging, food, and local rates on the same price level, plus a
-          visa-fee ballpark, paperwork, and a flight from the distance between capitals.
-          A permanent move is a one-time relocation — deposit, setup, flights, papers —
-          plus the monthly budget.
-        </p>
-        <p>
-          Salaries are indicative formal-sector averages, with a low-to-high band at roughly
-          two-thirds to one-and-two-thirds of the average. Net pay uses an approximate tax
-          and social wedge. The living rate on the economy tab compares typical take-home
-          pay with a decent one-person budget. It is not the household budget from the
-          monthly tab. The general job figure blends unemployment, growth, and a mild drag
-          from very low pay. It is not a score for a specific profession.
-        </p>
-        <p id="source-line"></p>
-      </details>
-      <p class="foot-links">
-        <a href="https://arnold-rg.github.io/AbroadCost/">Live site</a>
-        <a href="https://github.com/Arnold-RG/AbroadCost">Source</a>
-        <a href="https://github.com/Arnold-RG/AbroadCost/blob/main/docs/DATA_AND_METHODOLOGY.md">Methodology</a>
-      </p>
-    </footer>
   </div>
+
+  <footer id="site-foot">
+    <p class="foot-brand"><span id="country-count">195</span> countries · Arnova Group</p>
+    <p>Planning estimates, not a quote and not financial advice. Price levels, wages, and visa fees change, and cities inside a country can differ widely.</p>
+    <details class="method">
+      <summary>How the numbers are made</summary>
+      <p>
+        Cost of living is a price level against the United States: the World Bank PPP
+        conversion factor divided by the official exchange rate, held inside a planning
+        band when dual exchange rates would distort it. The monthly budget starts from a
+        mid-tier US basket, then scales by that price level, the lifestyle you pick, and
+        household size. Another adult counts as about two-thirds of a basket, a child
+        about two-fifths, and housing grows more slowly than the rest.
+      </p>
+      <p>
+        Travel uses daily lodging, food, and local rates on the same price level, plus a
+        visa-fee ballpark, paperwork, and a flight from the distance between capitals.
+        A permanent move is a one-time relocation — deposit, setup, flights, papers —
+        plus the monthly budget.
+      </p>
+      <p>
+        Salaries are indicative formal-sector averages, with a low-to-high band at roughly
+        two-thirds to one-and-two-thirds of the average. Net pay uses an approximate tax
+        and social wedge. The living rate on the economy tab compares typical take-home
+        pay with a decent one-person budget. It is not the household budget from the
+        monthly tab. The general job figure blends unemployment, growth, and a mild drag
+        from very low pay. It is not a score for a specific profession.
+      </p>
+      <p id="source-line"></p>
+    </details>
+    <p class="foot-links">
+      <a href="https://arnold-rg.github.io/AbroadCost/" rel="noopener noreferrer">Live site</a>
+      <a href="https://github.com/Arnold-RG/AbroadCost" rel="noopener noreferrer">Source</a>
+      <a href="https://github.com/Arnold-RG/AbroadCost/blob/main/docs/DATA_AND_METHODOLOGY.md" rel="noopener noreferrer">Methodology</a>
+      <a href="https://github.com/Arnold-RG/AbroadCost/blob/main/SECURITY.md" rel="noopener noreferrer">Security</a>
+    </p>
+  </footer>
+
   <noscript>
     <p class="error noscript">AbroadCost calculates in the browser. Turn on JavaScript to use the planner.</p>
   </noscript>
