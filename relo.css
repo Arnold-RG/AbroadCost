@@ -1110,3 +1110,33 @@ html[data-theme="dark"] select {
   .stat-grid { grid-template-columns: 1fr; }
   .stat.wide { grid-column: span 1; }
 }
+
+/* Extra device bands: small phones → tablets → desktops → ultrawide */
+.topbar {
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  padding-top: max(0.35rem, env(safe-area-inset-top));
+}
+.hero {
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+.btn, button, .tabs button, select, input {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+@media (min-width: 481px) and (max-width: 767px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .planner { width: min(960px, calc(100% - 2rem)); }
+}
+@media (min-width: 1440px) {
+  .planner, .hero-copy, .wrap {
+    width: min(1100px, calc(100% - 3rem));
+  }
+}
+@media (min-width: 1800px) {
+  .planner { width: min(1240px, calc(100% - 4rem)); }
+}
