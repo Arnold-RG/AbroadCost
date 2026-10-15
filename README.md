@@ -60,10 +60,10 @@ All 195 countries use UN M49-style continental regions: Africa, Americas, Asia, 
 
 ```text
 index.html          App shell (tabs, forms, charts, table)
-relo.css            Theme and layout (light / dark)
+relo.css            Theme and layout (forest / parchment / brass, light + dark)
 relo.js             Calculators, charts, economy rates
 world_data.js       195-country dataset (COL, GDP, wages, FX metadata)
-fonts/              Self-hosted Cormorant Garamond and Outfit
+fonts/              Self-hosted Syne and DM Sans
 favicon.svg         Mark
 og.png              Link preview image
 robots.txt          Crawler rules
