@@ -392,7 +392,7 @@ html[data-theme="dark"] body::before { opacity: 0.18; }
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.22s ease, background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
 .btn:hover { transform: translateY(-1px); }
 .btn-primary {
