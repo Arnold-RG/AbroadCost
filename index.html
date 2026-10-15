@@ -6,7 +6,7 @@
   <title>AbroadCost — Country budget planner</title>
   <meta name="description" content="Compare monthly living costs, salaries, and travel budgets for 195 countries. Planning estimates from World Bank price levels, not a quote.">
   <link rel="canonical" href="https://arnold-rg.github.io/AbroadCost/">
-  <meta name="theme-color" content="#0d5c63">
+  <meta name="theme-color" content="#0B3D2E">
   <meta name="color-scheme" content="light dark">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.frankfurter.app; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
@@ -29,8 +29,8 @@
   <link rel="apple-touch-icon" href="apple-touch.png">
   <link rel="preload" href="fonts/syne-700.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/dm-sans-400.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/arnova/arnova-base.css?v=20261015c">
-  <link rel="stylesheet" href="relo.css?v=20261015c">
+  <link rel="stylesheet" href="assets/arnova/arnova-base.css?v=20261016a">
+  <link rel="stylesheet" href="relo.css?v=20261016a">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -51,7 +51,7 @@
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute("content", theme === "dark" ? "#071316" : "#0d5c63");
+      if (meta) meta.setAttribute("content", theme === "dark" ? "#061F18" : "#0B3D2E");
     })();
   </script>
 </head>
@@ -73,7 +73,7 @@
     <div class="hero-copy reveal">
       <p class="brand-mark">AbroadCost</p>
       <h1 id="hero-title">See what a month abroad really costs.</h1>
-      <p class="hero-support">Living budgets, travel totals, and salaries across 195 countries â€” modeled for comparison, not a quote.</p>
+      <p class="hero-support">Living budgets, travel totals, and salaries across 195 countries — modeled for comparison, not a quote.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#planner">Open planner</a>
         <a class="btn btn-ghost" href="#panel-economy" data-tab-jump="economy">Explore economies</a>
@@ -130,8 +130,8 @@
         <div class="panel-copy">
           <h2>Monthly living budget</h2>
           <p class="hint">
-            A mid-tier month â€” rent, food, transport, utilities, healthcare, and the rest â€”
-            scaled by this countryâ€™s price level against the United States, then adjusted
+            A mid-tier month — rent, food, transport, utilities, healthcare, and the rest —
+            scaled by this country’s price level against the United States, then adjusted
             for who is in the household and how tightly you want to live.
           </p>
         </div>
@@ -189,7 +189,7 @@
           <div class="result screen-pane">
             <div class="figure" aria-live="polite">
               <p class="eyebrow">Estimated monthly total</p>
-              <p class="big" id="m-total">â€”</p>
+              <p class="big" id="m-total">—</p>
               <p class="big-sub" id="m-total-sub">per month</p>
             </div>
             <div class="share" id="m-share" aria-hidden="true"></div>
@@ -202,15 +202,15 @@
               <dl class="salary-dl">
                 <div>
                   <dt>Gross range</dt>
-                  <dd id="m-gross">â€”</dd>
+                  <dd id="m-gross">—</dd>
                 </div>
                 <div>
                   <dt>Net range</dt>
-                  <dd id="m-net">â€”</dd>
+                  <dd id="m-net">—</dd>
                 </div>
                 <div>
                   <dt>Average, gross to net</dt>
-                  <dd id="m-avg-salary">â€”</dd>
+                  <dd id="m-avg-salary">—</dd>
                 </div>
               </dl>
               <p class="quiet" id="m-cover"></p>
@@ -333,7 +333,7 @@
             <div class="figure" aria-live="polite">
               <p class="eyebrow" id="s-result-label">Estimated traveling budget</p>
               <p class="route" id="s-route"></p>
-              <p class="big" id="s-total">â€”</p>
+              <p class="big" id="s-total">—</p>
               <p class="big-sub" id="s-total-sub"></p>
               <p class="route-meta" id="s-route-meta"></p>
             </div>
@@ -384,37 +384,37 @@
         <div class="stat-grid">
           <div class="stat feature">
             <span>Living rate</span>
-            <strong id="e-live-rate">â€”</strong>
+            <strong id="e-live-rate">—</strong>
             <small>Typical take-home against a decent month</small>
           </div>
           <div class="stat feature">
             <span>General job</span>
-            <strong id="e-job-general">â€”</strong>
+            <strong id="e-job-general">—</strong>
             <small>Hiring pressure for ordinary work, not a specialty</small>
           </div>
           <div class="stat">
             <span>GDP</span>
-            <strong id="e-gdp">â€”</strong>
+            <strong id="e-gdp">—</strong>
           </div>
           <div class="stat">
             <span>Growth</span>
-            <strong id="e-growth">â€”</strong>
+            <strong id="e-growth">—</strong>
           </div>
           <div class="stat">
             <span>Unemployment</span>
-            <strong id="e-unemp">â€”</strong>
+            <strong id="e-unemp">—</strong>
           </div>
           <div class="stat">
             <span>Population</span>
-            <strong id="e-pop">â€”</strong>
+            <strong id="e-pop">—</strong>
           </div>
           <div class="stat wide">
             <span>Gross salary / month</span>
-            <strong id="e-gross">â€”</strong>
+            <strong id="e-gross">—</strong>
           </div>
           <div class="stat wide">
             <span>Net salary / month</span>
-            <strong id="e-net">â€”</strong>
+            <strong id="e-net">—</strong>
           </div>
         </div>
 
@@ -451,7 +451,7 @@
             <p class="sr-only" id="chart-salary-sum"></p>
           </div>
         </div>
-        <p class="quiet chart-note">The marked bar is the country you selected. GDP and growth use the filtered list. Living rate and hiring use that countryâ€™s region.</p>
+        <p class="quiet chart-note">The marked bar is the country you selected. GDP and growth use the filtered list. Living rate and hiring use that country’s region.</p>
 
         <div class="table-wrap screen-pane">
           <table class="data-table" id="e-table">
@@ -495,7 +495,7 @@
       <p>
         Travel uses daily lodging, food, and local rates on the same price level, plus a
         visa-fee ballpark, paperwork, and a flight from the distance between capitals.
-        A permanent move is a one-time relocation â€” deposit, setup, flights, papers â€”
+        A permanent move is a one-time relocation — deposit, setup, flights, papers —
         plus the monthly budget.
       </p>
       <p>
@@ -520,7 +520,7 @@
     <p class="error noscript">AbroadCost calculates in the browser. Turn on JavaScript to use the planner.</p>
   </noscript>
   <script src="world_data.js"></script>
-  <script src="relo.js?v=20261015c"></script>
-  <script src="assets/arnova/arnova-secure.js?v=20261015c" defer></script>
+  <script src="relo.js?v=20261016a"></script>
+  <script src="assets/arnova/arnova-secure.js?v=20261016a" defer></script>
 </body>
 </html>
