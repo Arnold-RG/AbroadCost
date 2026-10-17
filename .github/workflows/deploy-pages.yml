@@ -4,20 +4,21 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -27,16 +28,25 @@ jobs:
           cp index.html relo.css relo.js world_data.js _site/
           cp favicon.svg robots.txt sitemap.xml 404.html og.png apple-touch.png paper.png _site/
           cp fonts/*.woff2 fonts/OFL.txt _site/fonts/
+          cp -a assets _site/assets
           cp .nojekyll _site/
           # Keep docs off the public root; site is the product surface
 
+      - name: Fail if a referenced asset is missing
+        run: python3 tool/check_pages_assets.py _site
+
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: _site
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
