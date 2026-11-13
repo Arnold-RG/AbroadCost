@@ -1,6 +1,6 @@
 # AbroadCost — architecture
 
-**Maintainer:** Arnova Group
+**Maintainer:** Vira
 
 ## Overview
 

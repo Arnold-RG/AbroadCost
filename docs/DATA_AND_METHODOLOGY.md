@@ -1,6 +1,6 @@
 # AbroadCost — data & methodology
 
-**Maintainer:** Arnova Group  
+**Maintainer:** Vira  
 **Coverage:** 195 countries  
 **Purpose:** Transparent planning estimates for living, travel, salaries, and job-market pressure
 

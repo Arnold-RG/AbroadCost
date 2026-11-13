@@ -1,6 +1,6 @@
 # Contributing to AbroadCost
 
-Thank you for helping improve AbroadCost. This project is maintained by **Arnova Group**.
+Thank you for helping improve AbroadCost. This project is maintained by **Vira**.
 
 ## How to contribute
 
@@ -23,7 +23,7 @@ Thank you for helping improve AbroadCost. This project is maintained by **Arnova
 - Keep the site **static** (no required build for end users)
 - Do not commit secrets, API keys, or local agent configs
 - Do not add Cursor agent folders (`.cursor/`, agent transcripts, etc.)
-- Attribute work to **Arnova Group** in docs and copyright notices — not to AI tooling vendors
+- Attribute work to **Vira** in docs and copyright notices — not to AI tooling vendors
 
 ## Local checks
 
