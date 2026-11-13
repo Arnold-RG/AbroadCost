@@ -23,6 +23,8 @@
 
 ---
 
+[![AbroadCost](docs/screenshot.jpg)](https://arnold-rg.github.io/AbroadCost/)
+
 ## Live access
 
 | | |
@@ -132,3 +134,7 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 Source-available under [LICENSE](LICENSE). The live website is free for public use. Commercial rebranding or redistribution requires written permission from Arnova Group.
+
+## Author
+
+Arnold Rurangwa
