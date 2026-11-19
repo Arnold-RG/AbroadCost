@@ -1,0 +1,45 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+**/secrets/**
+.secret
+*_secret*
+id_rsa
+id_ed25519
+service-account*.json
+secrets/
+
+# Cursor / local agent tooling — never publish
+.cursor/
+.cursorrules
+.claude/
+.agents/
+agent-transcripts/
+*.cursor*
+.codex/
+
+# Local scratch
+_tmp/
+*.bak
